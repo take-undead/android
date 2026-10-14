@@ -23,6 +23,12 @@ Claude Code がこのリポジトリで作業するときに最初に読むフ�
 - 返答は日本語。コード内のコメントも日本語でよい。
 - アプリを追加・変更したら、下の「作業記録」に 1 行追記する。
 
+## 鍵を扱うときの注意(2026-10-14 追加・違反しそうなら警告する)
+
+- **本番の鍵(WireGuard の秘密鍵など)を新しい端末に入れる前に、その端末が信用できるかを確かめて利用者に警告する。**
+  確かめること: `ro.build.type`(user 以外は開発用)、`ro.build.tags`(test-keys は非正規)、`adb root` / `su` の有無、画面ロックの有無。
+- 信用できない端末には本番の鍵を入れず、端末ごとの別の鍵(別のピア)を使う。経緯は「mt5mon」の節の「鍵の安全と非正規端末」。
+
 ## 事前の注意事項(アプリを作る前に必ず読む・違反しそうなら警告する)
 
 方針: **スマホ版を先に作り、その後タブレット向けに調整する。** そのために最初から守ること。
@@ -141,7 +147,8 @@ android/
 ├─ .gitignore
 └─ apps/
    ├─ hello-world/    # 最初のサンプル(Kotlin + Jetpack Compose、独立した Gradle プロジェクト)
-   └─ mt5mon/         # PicoCalc の apps/net/mt5mon + vpschat を 1 本にした Android 版(下の「mt5mon」の節)
+   ├─ mt5mon/         # PicoCalc の apps/net/mt5mon + vpschat を 1 本にした Android 版(下の「mt5mon」の節)
+   └─ esp32cam/       # winapp の esp32cam(Tkinter)の Android 版(下の「esp32cam」の節)
 ```
 
 - 各アプリは独立した Gradle プロジェクト(ルートに共通の settings.gradle は置かない)。
@@ -195,7 +202,7 @@ PowerShell で確認した事実:
 | lifecycle-runtime-ktx | 2.11.0 | 同上 |
 | compileSdk | 37 | Compose BOM 2026.09.00 のライブラリ(foundation 1.12.1 など)が AAR metadata で 37 以上を要求(2026-10-14 のビルドで確認。36 ではビルドが止まった) |
 | targetSdk | 36 | 動作の切り替えは急がない(Lint の OldTargetApi は warning のまま) |
-| minSdk | 26 | adaptive icon(mipmap-anydpi-v26)を使うため |
+| minSdk | hello-world 26 / mt5mon 23 | hello-world は adaptive icon のため 26。mt5mon は Android 6.0 の MECHEN H1 で使うため 23(上の「2 台目」の節) |
 
 設定上の注意(公式「Migrate to built-in Kotlin」で確認):
 - AGP 9 以降は Kotlin が組み込みのため `org.jetbrains.kotlin.android` プラグインは適用しない。
@@ -275,14 +282,117 @@ PowerShell で確認した事実:
   チャイムは端末の**アラーム音量**に従う(当時 11/15)。
 - 未確認: 永久ブロック・解除・チャットの送信(本当に VPS を操作するので試験では押していない)、知らせのポップアップ(VPS に新しい知らせが来たとき)。
 
+### 2 台目: MECHEN H1(Android 6.0・API 23・armeabi-v7a・480×800)への対応(2026-10-14 13:00)
+
+- そのままでは `INSTALL_FAILED_OLDER_SDK`。**minSdk を 26 → 23 に下げた**(G8 の例外。利用者がこの端末で使いたいと言ったため。警告は出した)。
+- 下げるために変えたもの(いずれも AAR の manifest の minSdkVersion を実際に読んで確認):
+  - `com.wireguard.android:tunnel` 1.0.20260102(minSdk 24)→ **1.0.20230706**(minSdk 21、armeabi-v7a 入り)。公開 API(GoBackend・Statistics・PeerStats の record・Config の Builder)は同じ(javap で確認)。
+  - `navigation-compose` 2.10.2(minSdk 24)→ **2.9.8**(minSdk 21)。
+  - アイコン: 8.0 未満用に `res/mipmap-anydpi/ic_launcher.xml`(vector)を追加。8.0 以上は `-v26` の adaptive-icon が優先される。
+- Lint は通った(警告に Aligned16KB ×3 が増えた。旧版ライブラリの .so が 16KB 境界でない。Android 15 の 16KB ページ端末で動かすには新しい版が要る → その端末では minSdk 24 に戻す)。
+- H1 で起動を確認。Wi-Fi 192.168.0.229、おやすみモードは「アラームのみ」(zen_mode=3)。
+- **H1 ではファイル選択画面が使えない**(事実): 選択画面を前に出した瞬間に、端末のファームウェアが MT5 Monitor を止める
+  (logcat: `ActivityManager: Killing app.mt5mon (adj 2): stop app.mt5mon`、直前に端末独自の `jtest: recent size ..5`)。クラッシュではない。RAM 1.4GB。
+  → 対策として **「開く」「共有」(ACTION_VIEW / ACTION_SEND、text/plain)で config.txt を受け取る口**を MainActivity に付けた(`launchMode=singleTop`)。
+  中身が config.txt として読めたときだけ保存する。adb からは
+  `am start -n app.mt5mon/.MainActivity -a android.intent.action.VIEW -d content://media/external/file/<id> -t text/plain --grant-read-uri-permission`
+  (`<id>` は `content query --uri content://media/external/file --projection _id:_data --where "_data LIKE '%mt5mon_config%'"`。
+  adb で push したファイルは `am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/…` で索引に入れる)。
+  この方法で H1 に config.txt を読み込めた(13:10)。
+- **H1 の VPN(解決、13:20)**: 最初は `pm list packages` に `com.android.vpndialogs` が無く、`VpnService.prepare` の許可画面を開こうとして
+  `ActivityNotFoundException` で落ちた(→ 捕まえて「VPN の許可画面が無い」と出すようにした)。`/dev/net/tun` も無かった。
+  利用者「VPN を入れれば良いのでは」を受けて端末を調べた事実: userdebug ビルドで `adb root` が通る。カーネル 3.18.19 は TUN に対応
+  (`/proc/misc` に `200 tun`。装置ファイルが無いだけ)。VPN の許可は AppOps の `ACTIVATE_VPN` に記録される。
+  → root で `mknod /dev/net/tun c 10 200` と `appops set app.mt5mon ACTIVATE_VPN allow` を行ったら、許可画面なしで WireGuard が上がり
+  (`tun0` 10.8.0.3、経路 10.8.0.0/24)、モニターに LIVE のデータが出た。手順は `apps/mt5mon/tools/h1_vpn_setup.ps1`。
+  **`/dev/net/tun` は再起動で消える**(AppOps の許可は残る)ので、H1 を再起動したら USB でつないでスクリプトを流す。
+  他の VPN アプリ(WireGuard 公式など)を入れても同じ許可画面で止まるので、入れる意味は無い(同じ VpnService を使うため)。
+- **H1 でチャイムが鳴らない(13:28 解決)**: 端末の**アラーム音量がスピーカーで 0**だった(`dumpsys audio` の STREAM_ALARM speaker: 0)。
+  再生自体は走っていた(logcat に AudioTrack 22050Hz)。Android 6 には `media volume` が無いので `service call audio 3 i32 4 i32 10 i32 0 s16 app.mt5mon`
+  (setStreamVolume: stream 4=ALARM、10)で上げ、アプリ内の音量も 3 → 10 にした。利用者「鳴った」で確認。
+  **2 台とも「チャイムが鳴らない」の原因は端末側の音量・モード**(BL8800Pro はおやすみモード、H1 はアラーム音量 0)。
+- **BL8800Pro(1 台目)には新しい APK をまだ入れていない**(作業時に USB が外れていた)。次に USB でつないだら入れ直す(古い APK でも動作は同じ)。
+- 2 台とも同じ鍵なので、**同時に VPN をつなぐと取り合いになる**。H1 で使うときは BL8800Pro の VPN を「切る」。
+
+### 鍵の安全と非正規端末(2026-10-14 13:40、利用者と確認)
+
+- 事実: **MECHEN H1 は非正規に近い開発用ビルド**(`ro.build.type=userdebug`、`ro.build.tags=test-keys`、`adb root` が通る、`/system/xbin/su` あり)。
+  USB をつないだ人や端末内の別アプリが、アプリ専用領域の WireGuard 秘密鍵を読み出せる(adb root で中を覗けることを実際に確認)。
+- アプリの鍵は VPS の内側(10.8.0.0/24)に入れる鍵で、モニターだけでなく永久ブロック・解除(`/ban` `/unban`)や Claude への問いかけにも使える。
+- H1 に PicoCalc と同じ本番の鍵を置いたのは 2 台目の試験としての判断だが、**安全面の注意を先に出すべきだった**(反省。以後、鍵を新しい端末に入れる前に信用できる端末かを確かめて警告する)。
+- 勧めた対策(VPS 側の変更が要る。**利用者の指示待ち**):
+  1. 信用できない端末には PicoCalc と同じ鍵を入れない。端末ごとに別のピア(例: H1 = 10.8.0.5)を作り、漏れたらその鍵だけ消す。
+  2. そのピアの AllowedIPs を VPS 側で絞る(10.8.0.1:8080 だけ)。
+  3. `/ban` `/unban` `/stats_refresh` `/chat` など操作系は信用できる端末のピアからだけ受ける(今は 10.8.0.0/24 全部から受ける)。
+  4. H1 の試験が終わったら鍵を作り直す(PicoCalc と共通なので、作り直すと PicoCalc と BL8800Pro にも入れ直し)。
+- 今すぐできること: H1 に画面ロック(設定 → セキュリティ → 画面ロック。今は「スワイプ」)、H1 の VPN は試験のときだけつなぎ普段は「切る」。
+- 動作の見込み(推測): Android 6 以上で VPN が使える端末なら動く可能性が高い。VPN が削られた端末は root が取れないと張れない。
+  メーカー独自の節電で裏のアプリを止める端末では、画面を開いたままの専用機として使う。
+
 ### 残る課題
 
 - PicoCalc と同時に使うと取り合いになる(同じピア)。運用では片方だけつなぐ。
 - 画面を消している間は取らない(通知・常時監視は未実装)。
 - USB の adb 接続が数十秒ごとに切れる(`no devices/emulators found` → すぐ戻る)。ケーブルかポートの問題とみている(推測)。`adb wait-for-device` を挟めば動く。
 
+## esp32cam(winapp の esp32cam の Android 版)(2026-10-14)
+
+利用者の指示: 「D:\github\Python\winapp\apps\esp32cam の要件を満たす android アプリを android に合わせて新たに作って」
+
+### 元の要件(winapp の README.md・MANUAL.md・logic/*.py で確認)
+
+- ESP32-CAM(net_cam ファームウェア)6 台の MJPEG(ポート 81、Content-Length 無し → JPEG のマーカーで切る)を同時表示。
+- タイルをクリックして 1 台を選ぶ(青枠)。撮影(`/capture?flash=&t=`、PC の時刻を t で送る)・一覧(`/photos`)・状態(`/status`)は選んだ 1 台。
+  全カメラ接続/撮影は失敗をまとめて 1 つのダイアログ。受信中に切れた台はダイアログを出さずタイルと状態欄に。
+- 写真のプレビュー(前後へ切り替え、題名に「名前（横×縦）n / 全数」)、PC に保存。IP 6 台分を保存(既定 192.168.1.141〜146)。
+
+### Android 版の作り(判断)
+
+| 判断 | 内容 | 理由 |
+|---|---|---|
+| 画面 | カメラ(タイル 6 枚。幅 600dp 未満は 2 列 × 3 行、以上は 3 列 × 2 行)→ 写真一覧 → プレビュー(HorizontalPager で左右スワイプ)。設定は別画面 | 縦持ちのスマホに 3 列は狭い。「事前の注意事項」の幅での切り替え |
+| 通信 | `HttpURLConnection` + `BitmapFactory`。ライブラリ無し | 元の Python と同じ単純な HTTP。G12 |
+| 裏に回ったら映像を止め、戻ったら同じ台をつなぎ直す(`onStop` / `onStart`) | 電池と WiFi のため | Android 流。実機で確認(ホーム中は PC への接続 0、復帰で新しい /stream) |
+| 映像中は画面を消さない(`FLAG_KEEP_SCREEN_ON`) | 監視用途 | — |
+| 保存 | Android 10 以上は MediaStore で「ピクチャ/ESP32CAM」、それより前はアプリ専用 Pictures。権限不要 | B1 |
+| 平文 HTTP | `network_security_config.xml` の base-config で **全宛先の平文を許可**(Lint の InsecureBaseConfiguration は warning のまま) | **B2 の例外**。カメラは LAN 内の HTTP 専用機器で、IP は利用者が入れるため宛先を限定できない。このアプリは他と通信しない |
+| 全角の IP 入力 | 全角の数字・点を半角に直す(`CameraApi.toHalfWidth`) | **実機で Gboard の日本語モードが「１９２．１６８…」と入れた**(事実)。利用者も同じ目に遭う |
+| minSdk | 23、navigation 2.9.8 | mt5mon と同じ。古い端末でも使えるように |
+| 文字 | ラベルは strings.xml。VM の診断文(「カメラに接続できませんでした…」など)は元の Python の文言をそのままコードに | C1 の例外(mt5mon と同じ扱い) |
+
+### 試験の方法(実機のカメラ無し)
+
+- PC(192.168.0.204)で **偽のカメラサーバ**(Python、ポート 80 の API とポート 81 の MJPEG。PIL で動く絵を作る)を立て、
+  アプリの IP を 192.168.0.204〜209 にした(1 台成功・5 台失敗の両方の道を通す)。スクリプトは試験用で一時フォルダに置き、リポジトリには入れない
+  (winapp の CLAUDE.md「外部機器が要るアプリの確認」と同じ考え方)。
+- BL8800Pro(Android 11)で確認した事実(14:05〜14:10、adb の screencap): 1 台の映像が動く、失敗 5 台が 1 つのダイアログ、撮影 → 一覧の自動更新、
+  状態の表示、写真一覧(新しい順)、プレビューとスワイプ、題名の大きさ、端末への保存(`/sdcard/Pictures/ESP32CAM/cam1_….jpg` が出来た)、
+  裏に回す/復帰で映像の停止と再接続。
+- 直した不具合: プレビューで先読みされたページの「現在の 1 枚」が取れず題名の大きさと保存が効かない(ページごとの読み込み結果を持つ形に)、
+  接続エラーの一覧が届いた順(番号順に並べ替え)、Lint の NewApi(java.time → SimpleDateFormat)・ContextCastToActivity・LocalContextGetResourceValueCall。
+- 全カメラ撮影も確認(14:12): 成功 1 台は載らず、失敗 5 台がカメラの番号順に 1 つのダイアログ。本文が長いと下が切れたので、ダイアログの本文をスクロール可能にした。
+- **実機の ESP32-CAM(192.168.0.141)で映像を確認**(14:27)。800×600 の JPEG 約 26KB/枚。利用者「映らない」→ こちらで［接続］を押したら映った
+  (起動しただけでは接続しない。元の Windows 版と同じ)。利用者「良い感じ」。
+- 利用者「ボタンが大きく表示スペースの邪魔」(14:30)→ 題名の行をなくし、小さなボタン 1 段(全接続/光/撮影/全撮影/状態/写真)、歯車は下の状態行の右端、
+  タイルの見出しを「1: 192.168.0.141」に、タイルは画面の高さいっぱい(映像は 4:3 のまま中に収める)。実機で 1 段に収まり IP が全部見えることを確認。
+- 利用者「カメラをダブルタップしたら、そのカメラを全画面表示」(14:38)→ `ui/FullScreen.kt`(経路 `full/{index}`)。タイルは `detectTapGestures`
+  (1 回タップで対象、ダブルタップで全画面)。全画面は 1 回タップか戻るで戻る。未接続ならつないでから出す。全画面中は画面を消さない。
+  adb の `input tap` ではダブルタップを再現できない(1 回の送出が遅い)ので、**利用者の実機での確認待ち**。
+  副作用: ダブルタップ判定を待つ分、1 回タップの反応が約 0.3 秒遅れる。
+- 未確認: 6 台同時の負荷(実機は 1 台)、ダブルタップの全画面(利用者の確認待ち)。
+
 ## 作業記録
 
+- 2026-10-14 14:40: esp32cam を実機カメラ(192.168.0.141)で確認。ボタンを 1 段の小さなものに、タイルを画面いっぱいに、ダブルタップで全画面を追加。
+  mt5mon(H1 対応)と esp32cam をまとめてコミット・push(利用者の指示)。
+- 2026-10-14 14:10: `apps/esp32cam` を新規作成(winapp の esp32cam の Android 版)。偽サーバで通信経路を確認、BL8800Pro で動作確認。
+  BL8800Pro の mt5mon も最新 APK に入れ替えた(保留分)。GitHub 未 push。
+- 2026-10-14 13:40: H1 が userdebug/test-keys の非正規に近い端末と確認。鍵の安全の注意を「鍵を扱うときの注意」として追加。
+  端末ごとの別鍵・VPS 側での絞り込みを提案(利用者の指示待ち)。H1 のチャイムはアラーム音量 0 が原因(解決)。
+- 2026-10-14 13:15: 2 台目 MECHEN H1(Android 6.0)対応。minSdk 23・WireGuard 1.0.20230706・navigation 2.9.8 に変更、
+  config.txt を「開く/共有」で受け取る口を追加、VPN 許可画面が無い端末で落ちないようにした。
+  H1 は root で TUN の装置ファイルと AppOps の VPN 許可を入れて WireGuard が上がり、LIVE のデータが出た(`tools/h1_vpn_setup.ps1`)。
+  BL8800Pro には新 APK 未反映(次に USB でつないだら入れる)。GitHub 未 push。
 - 2026-10-14 12:10: git 初期化、最初のコミット(61 ファイル)を https://github.com/take-undead/android に push。
 - 2026-10-14 12:00: チャイムが鳴らない → おやすみモードが原因。用途を USAGE_ALARM に変えて解決(利用者が「鳴りました」と確認)。
   アプリは端末のアプリ一覧に「MT5 Monitor」(紺地に白い三角のアイコン)として入っている(利用者が見つけたことを確認)。

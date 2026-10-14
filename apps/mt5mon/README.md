@@ -36,6 +36,21 @@ mt5mon/
    └─ xml/network_security_config.xml  # 10.8.0.1 だけ平文 HTTP を許す（WireGuard の内側）
 ```
 
+## 対応端末
+
+Android 6.0（API 23）以上。32bit / 64bit の ARM。**VPN（VpnService）が使える端末であること**。
+2026-10-14 に Blackview BL8800Pro（Android 11）と MECHEN H1（Android 6.0）で動作を確認。
+H1 は端末に VPN の許可画面と `/dev/net/tun` が無いので、USB でつないで `tools\h1_vpn_setup.ps1` を流す（root で装置ファイルと VPN の許可を入れる。再起動のたびに必要）。
+同じ鍵を使うので、**VPN をつなぐのは 1 台ずつ**（PicoCalc を含む）。
+
+### config.txt をファイル選択画面なしで渡す
+
+RAM の少ない端末ではファイル選択画面を開くとアプリが止められることがある。その場合はファイル管理アプリで `mt5mon_config.txt` を「開く」か「共有」して MT5 Monitor を選ぶ。adb からは次でも渡せる（`<id>` は `content query` で調べる。CLAUDE.md 参照）。
+
+```
+adb shell am start -n app.mt5mon/.MainActivity -a android.intent.action.VIEW -d content://media/external/file/<id> -t text/plain --grant-read-uri-permission
+```
+
 ## 端末での場所
 
 アプリ一覧に **「MT5 Monitor」**（紺地に白い三角のアイコン）として入る。adb で直接入れるので、ストアは通らない。
@@ -74,5 +89,7 @@ gradlew.bat lintDebug assembleDebug
 
 ## チャイムについて
 
-チャイムは端末の**アラーム音量**で鳴る（おやすみモードでも鳴るように「アラーム」の用途にしてある）。鳴らないときはアラーム音量を確かめる。
+チャイムは端末の**アラーム音量**で鳴る（おやすみモードでも鳴るように「アラーム」の用途にしてある）。
+鳴らないときは、まず端末のアラーム音量（設定 → 音）を確かめる。2026-10-14 の 2 台はどちらも端末側が原因だった（おやすみモード／アラーム音量 0）。
+アプリ内の音量（設定のスライダー、1〜10）は端末のアラーム音量に重ねてかかる。
 - 画面を消している間の取得（バックグラウンド）。今は画面を開いている間だけ取る。

@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "app.mt5mon"
-        minSdk = 26
+        minSdk = 23 // Android 6.0 の MECHEN H1 で使うため 26 から下げた（2026-10-14。CLAUDE.md G8 の例外。アイコンは mipmap-anydpi に予備を置く）
         targetSdk = 36
         versionCode = 1
         versionName = "0.1"

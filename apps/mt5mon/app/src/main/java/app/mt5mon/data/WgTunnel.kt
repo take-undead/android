@@ -45,6 +45,11 @@ class WgTunnel(context: Context) {
     /** VPN の許可がまだなら、ユーザーに見せる Intent を返す（null なら許可済み） */
     fun prepareIntent(): Intent? = VpnService.prepare(appContext)
 
+    /** 上げられない理由を画面に出す（許可画面が無い端末など） */
+    fun setError(msg: String) {
+        _info.value = _info.value.copy(started = false, up = false, error = msg)
+    }
+
     suspend fun up(cfg: AppConfig): Boolean = withContext(Dispatchers.IO) {
         try {
             val iface = Interface.Builder()

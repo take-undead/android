@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  通信は HTTPS のみ（CLAUDE.md B2）の例外:
+  ESP32-CAM（net_cam ファームウェア）は LAN の中で HTTP（80 と 81）しか話さず、宛先の IP は利用者が入れる。
+  そのため平文を全宛先で許す。このアプリはカメラ以外と通信しない。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

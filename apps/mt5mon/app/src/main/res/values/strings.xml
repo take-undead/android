@@ -141,6 +141,8 @@
     <string name="set_config_none">まだ読み込んでいない</string>
     <string name="set_config_bad">不備: %1$s</string>
     <string name="set_config_import_err">読み込めない: %1$s</string>
+    <string name="set_config_imported">設定ファイルを読み込んだ</string>
+    <string name="vpn_dialog_missing">この端末には VPN の許可画面（com.android.vpndialogs）が無く、VPN を使えない</string>
     <string name="set_config_import">ファイルから読み込む</string>
     <string name="set_config_paste">貼り付けて編集</string>
     <string name="set_config_hint">PC の picoclac\\build\\mt5mon\\config.txt を端末に写して選ぶ。秘密鍵が入るので人に渡さない。読み込んだ中身はこのアプリの専用領域にだけ保存する。</string>

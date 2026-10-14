@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ESP32-CAM ビューア</string>
+
+    <string name="ok">OK</string>
+    <string name="back">戻る</string>
+    <string name="save">保存</string>
+    <string name="refresh">一覧更新</string>
+    <string name="settings">設定</string>
+
+    <string name="camera_n">カメラ %1$d</string>
+    <string name="tile_head">%1$d: %2$s</string>
+    <string name="target">対象: カメラ %1$d</string>
+    <string name="connect">接続</string>
+    <string name="disconnect">切断</string>
+    <string name="connect_all">全カメラ接続</string>
+    <string name="disconnect_all">全カメラ切断</string>
+    <string name="connect_all_short">全接続</string>
+    <string name="disconnect_all_short">全切断</string>
+    <string name="capture_all_short">全撮影</string>
+    <string name="flash">フラッシュ</string>
+    <string name="flash_short">光</string>
+    <string name="capture">撮影</string>
+    <string name="capture_all">全カメラ撮影</string>
+    <string name="status">状態</string>
+    <string name="photos">写真</string>
+    <string name="full_hint">タップで戻る</string>
+
+    <string name="st_idle">未接続</string>
+    <string name="st_connecting">接続しています…</string>
+    <string name="st_waiting">映像を待っています…</string>
+    <string name="st_failed">接続できませんでした</string>
+    <string name="st_disconnected">切断されました</string>
+
+    <string name="photos_title">カメラ %1$d の写真</string>
+    <string name="no_photos">写真がありません（一覧更新を押す）</string>
+    <string name="save_to_device">端末に保存</string>
+    <string name="saved_to">保存しました: %1$s</string>
+
+    <string name="set_hosts_title">カメラの IP アドレス</string>
+    <string name="set_hosts_hint">SD カードの config.txt の ip= の値。初期値はカメラ 1 が 192.168.1.141 で、以降 1 ずつ増える。</string>
+    <string name="set_base">カメラ 1 の IP から順に</string>
+    <string name="set_fill">並べる</string>
+</resources>

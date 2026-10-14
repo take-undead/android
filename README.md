@@ -9,7 +9,8 @@ android/
 ├─ .gitignore
 └─ apps/
    ├─ hello-world/   # 最初のサンプルアプリ（新しいアプリの雛形）
-   └─ mt5mon/        # MT5 状況モニター + VPS の Claude とのチャット（PicoCalc の mt5mon / vpschat の Android 版）
+   ├─ mt5mon/        # MT5 状況モニター + VPS の Claude とのチャット（PicoCalc の mt5mon / vpschat の Android 版）
+   └─ esp32cam/      # ESP32-CAM 6 台のビューア（winapp の esp32cam の Android 版）
 ```
 
 ## ルール

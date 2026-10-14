@@ -153,6 +153,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (granted) connectVpn()
     }
 
+    /** 許可画面を開けなかった（端末に VPN の許可画面が無い等）。落とさずに理由を出す */
+    fun onVpnPermissionUnavailable(msg: String) = tunnel.setError(msg)
+
     fun disconnectVpn() {
         viewModelScope.launch {
             _ui.update { it.copy(vpnBusy = true) }
