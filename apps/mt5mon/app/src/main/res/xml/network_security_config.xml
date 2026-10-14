@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  通信は HTTPS のみ（CLAUDE.md B2）の例外:
+  VPS の status_server.py は WireGuard の内側（10.8.0.1:8080）で HTTP/1.0 の平文で答える。
+  WireGuard が暗号化しているので、この 1 つの宛先だけ平文を許す。他の宛先は平文禁止のまま。
+  （<domain> に IP リテラルを書けるかは公式ドキュメントに明記が無い。実機で確かめる。だめなら base-config で許す）
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.8.0.1</domain>
+    </domain-config>
+</network-security-config>

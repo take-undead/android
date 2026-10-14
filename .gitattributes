@@ -1,0 +1,7 @@
+# 改行の扱い。gradlew は Linux/mac でも動くよう LF 固定
+* text=auto
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.jar binary
+*.png binary

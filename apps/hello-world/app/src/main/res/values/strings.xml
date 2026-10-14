@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hello World</string>
+    <!-- 画面の文字はここに置く(CLAUDE.md C1)。数値は %1$d のような書式引数で入れる(C2) -->
+    <string name="greeting">Hello, Android!</string>
+    <string name="tap_count">タップ回数: %1$d</string>
+    <string name="tap_button">タップ</string>
+</resources>

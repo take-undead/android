@@ -1,0 +1,30 @@
+# Gradle / ビルド成果物
+**/build/
+**/.gradle/
+**/local.properties
+
+# 署名キー・秘密情報(CLAUDE.md A2 / A4)。絶対にコミットしない
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
+# mt5mon の WireGuard の秘密鍵入りの設定（PC の picoclac\build\mt5mon\config.txt を写したもの）。置かない・コミットしない
+**/config.txt
+
+# Android Studio / IDE
+**/.idea/
+*.iml
+**/.kotlin/
+**/captures/
+**/.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# APK はリポジトリに置かない（build/ の中に出る）
+*.apk
+*.aab
+
+# Claude Code のローカル設定（権限の許可リスト。PC ごとに違う）
+.claude/settings.local.json

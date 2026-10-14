@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MT5 Monitor</string>
+
+    <!-- ナビゲーション -->
+    <string name="nav_monitor">モニター</string>
+    <string name="nav_nippo">日報</string>
+    <string name="nav_attack">攻撃</string>
+    <string name="nav_chat">チャット</string>
+    <string name="nav_settings">設定</string>
+
+    <!-- 共通 -->
+    <string name="refresh">今すぐ読み直す</string>
+    <string name="close">閉じる</string>
+    <string name="cancel">やめる</string>
+    <string name="ok">OK</string>
+    <string name="send">送る</string>
+    <string name="save">保存</string>
+    <string name="open_settings">設定を開く</string>
+    <string name="buy">買</string>
+    <string name="sell">売</string>
+
+    <!-- 状態の札 -->
+    <string name="badge_live">LIVE</string>
+    <string name="badge_stale">STALE</string>
+    <string name="badge_disconnected">MT5切断</string>
+    <string name="badge_frozen">停止</string>
+    <string name="badge_fail">取得失敗</string>
+    <string name="badge_loading">取得中</string>
+
+    <!-- 問題（チャートの上端） -->
+    <string name="problem_no_config">設定ファイル（config.txt）が無い。設定で読み込む</string>
+    <string name="problem_config">設定: %1$s</string>
+    <string name="problem_vpn_off">VPN 未接続（設定でつなぐ）</string>
+    <string name="problem_vpn_error">VPN: %1$s</string>
+    <string name="problem_vpn_handshake">VPN 接続中（ハンドシェイク待ち。VPS が答えなければ鍵の登録を確かめる）</string>
+    <string name="problem_vpn_stale">VPN 未接続（最後のハンドシェイクから %1$d 秒）</string>
+    <string name="problem_http_connect">HTTP 失敗: 接続できない %1$s:%2$d（%3$s）</string>
+    <string name="problem_http_timeout">HTTP 失敗: 時間切れ</string>
+    <string name="problem_http_code">HTTP 失敗: %1$d</string>
+    <string name="problem_http_503">（JSON が無い）</string>
+    <string name="problem_http_big">HTTP 失敗: 応答が大きすぎる</string>
+    <string name="problem_frozen">停止: gen_jst が %1$d 秒以上進まない（サービス停止）</string>
+    <string name="problem_stale">STALE: 最終ティックから 60 秒超（週末・回線断）</string>
+    <string name="problem_disconnected">MT5 がブローカーに未接続</string>
+
+    <!-- モニター -->
+    <string name="gen_age">%1$s %2$d秒前</string>
+    <string name="waiting">取得中…</string>
+    <string name="waiting_no_config_hint">PC の picoclac\\build\\mt5mon\\config.txt（tools\\mt5mon_config.py が作ったもの）をこの端末に写し、設定の「ファイルから読み込む」で選ぶ。PicoCalc と同じ鍵を使うので VPS 側の登録は要らない。</string>
+    <string name="waiting_pubkey">この端末の WireGuard 公開鍵（VPS の [Peer] と同じはず）:</string>
+    <string name="waiting_endpoint">接続先 %1$s</string>
+    <string name="bar_width">幅 %1$d</string>
+    <string name="chart_alert_on">♪%1$dp/%2$d分</string>
+    <string name="chart_alert_off">♪オフ</string>
+    <string name="acc_balance">残高%1$s 有効%2$s</string>
+    <string name="acc_profit">損益</string>
+    <string name="acc_margin">証拠金率 %1$s</string>
+    <string name="acc_ea">EA %1$d/%2$d 稼働</string>
+    <string name="acc_pos">建玉 %1$d</string>
+    <string name="tab_positions">建玉</string>
+    <string name="tab_eas">EA</string>
+    <string name="no_positions">建玉なし</string>
+    <string name="ea_alive">稼働</string>
+    <string name="ea_dead">停止</string>
+
+    <!-- 知らせ -->
+    <string name="notice_title">VPS からの知らせ（スプレッド警報の調査）</string>
+    <string name="notice_head">警報 %1$s  spread %2$.2f pips（しきい値 %3$.2f）  判断 #%4$d → #%5$d</string>
+    <string name="notice_done">調査を終えた時刻 %1$s</string>
+    <string name="notice_auto_close">あと %1$d 秒で自動で閉じる</string>
+
+    <!-- 日報 -->
+    <string name="nippo_title">AI 日報</string>
+    <string name="nippo_summary">要約</string>
+    <string name="nippo_full">全文</string>
+    <string name="nippo_loading">監督の判断を取得中…（VPS の /sup.json）</string>
+    <string name="nippo_loading_full">日報の全文を取得中…（VPS の /nippo.md）</string>
+
+    <!-- 攻撃の記録 -->
+    <string name="attack_title">攻撃の記録</string>
+    <string name="attack_updated">%1$s（%2$s から）</string>
+    <string name="attack_jail">%1$-4s %2$-10s 遮断中%3$3d 累計%4$4d 失敗%5$6d</string>
+    <string name="attack_perm_count">永久ブロック %1$d 件</string>
+    <string name="attack_tab_top">上位</string>
+    <string name="attack_tab_perm">永久</string>
+    <string name="attack_tab_recent">記録</string>
+    <string name="attack_tab_stats">国別</string>
+    <string name="attack_state_perm">永久</string>
+    <string name="attack_state_noend">無期</string>
+    <string name="attack_act_ban">遮断</string>
+    <string name="attack_act_unban">解除</string>
+    <string name="attack_act_inc">延長</string>
+    <string name="attack_act_restore">復元</string>
+    <string name="attack_ban">永久ブロック</string>
+    <string name="attack_unban">解除</string>
+    <string name="attack_sort_fails">▼失敗回数</string>
+    <string name="attack_sort_ips">▼IP数</string>
+    <string name="attack_stats_refresh">集計を作り直す</string>
+    <string name="attack_stats_loading">国別の集計を取得中…</string>
+    <string name="attack_stats_head">%1$s〜%2$s  IP %3$d  失敗 %4$d  %5$d か国  集計 %6$s</string>
+    <string name="attack_nets_head">── 失敗の多いネットワーク（/16）──</string>
+    <string name="attack_net_row">IP%1$4d 失敗%2$7d</string>
+    <string name="attack_unknown_country">国不明</string>
+    <string name="attack_detail_top">%1$s 遮断%2$d回 最後%3$s</string>
+    <string name="attack_detail_perm">%1$s ポート%2$s 遮断後%3$dパケット</string>
+    <string name="attack_detail_recent">%1$s 失敗%2$d回 ポート%3$s</string>
+    <string name="attack_confirm_ban_title">永久ブロックする？</string>
+    <string name="attack_confirm_unban_title">解除する？</string>
+    <string name="attack_confirm_ban">%1$s からの全ポートを VPS の nftables で永久に遮断する。本当に送る。</string>
+    <string name="attack_confirm_unban">%1$s の永久ブロックを外し、fail2ban の一時遮断も外す。</string>
+
+    <!-- チャット -->
+    <string name="chat_title">VPS の Claude</string>
+    <string name="chat_state_idle">待機</string>
+    <string name="chat_state_busy">考え中 %1$d秒</string>
+    <string name="chat_state_err">取得失敗: %1$s</string>
+    <string name="chat_new">新しい会話</string>
+    <string name="chat_new_confirm">前の文脈を引き継がない新しい会話にする（相談メモは VPS に残る）。</string>
+    <string name="chat_me">◇ あなた</string>
+    <string name="chat_ai">◆ Claude</string>
+    <string name="chat_note">（記録）</string>
+    <string name="chat_thinking">◆ Claude が考え中… %1$d秒</string>
+    <string name="chat_hint">話しかける（2000 バイトまで）</string>
+
+    <!-- 設定 -->
+    <string name="set_vpn_title">WireGuard（VPS への VPN）</string>
+    <string name="set_vpn_down">切れている</string>
+    <string name="set_vpn_up">つながっている（最後のハンドシェイク %1$d 秒前）</string>
+    <string name="set_vpn_handshaking">ハンドシェイク待ち…</string>
+    <string name="set_vpn_stale">応答なし（最後のハンドシェイクから %1$d 秒）</string>
+    <string name="set_vpn_error">上げられない: %1$s</string>
+    <string name="set_vpn_bytes">受信 %1$d KB  送信 %2$d KB</string>
+    <string name="set_vpn_connect">つなぐ</string>
+    <string name="set_vpn_disconnect">切る</string>
+    <string name="set_vpn_auto">起動時に自動</string>
+    <string name="set_vpn_note">10.8.0.0/24 宛てだけ VPN を通す。他の通信はそのまま。PicoCalc と同じ鍵なので、PicoCalc の mt5mon と同時にはつなげない（後につないだ方が勝つ）。</string>
+    <string name="set_config_title">設定ファイル（config.txt）</string>
+    <string name="set_config_pubkey">この端末の公開鍵:</string>
+    <string name="set_config_lines">アドレス %1$s\n接続先 %2$s\n通す宛先 %3$s  keepalive %4$d 秒\nURL %5$s\n取得間隔 %6$d 秒</string>
+    <string name="set_config_none">まだ読み込んでいない</string>
+    <string name="set_config_bad">不備: %1$s</string>
+    <string name="set_config_import_err">読み込めない: %1$s</string>
+    <string name="set_config_import">ファイルから読み込む</string>
+    <string name="set_config_paste">貼り付けて編集</string>
+    <string name="set_config_hint">PC の picoclac\\build\\mt5mon\\config.txt を端末に写して選ぶ。秘密鍵が入るので人に渡さない。読み込んだ中身はこのアプリの専用領域にだけ保存する。</string>
+    <string name="set_alert_title">急な値動きのチャイム</string>
+    <string name="set_alert_on">鳴らす</string>
+    <string name="set_alert_pips">動いた幅（pips）</string>
+    <string name="set_alert_minutes">この時間で（分）</string>
+    <string name="set_alert_volume">音量 %1$d</string>
+    <string name="set_alert_test">試しに鳴らす</string>
+    <string name="set_alert_note">幅の 2 倍動くと 2 回…最大 5 回鳴る。上がると A5→E6、下がると E6→A5。</string>
+    <string name="set_notice_title">VPS からの知らせ</string>
+    <string name="set_notice_seconds">ポップアップを自動で閉じる秒</string>
+    <string name="set_notice_manual">手で閉じる</string>
+    <string name="set_notice_show_last">最後の知らせを見る</string>
+</resources>
