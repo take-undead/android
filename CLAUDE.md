@@ -8,6 +8,13 @@ Claude Code がこのリポジトリで作業するときに最初に読むフ�
 - `D:\github\android` で Android アプリを作る。
 - アプリは `apps/` の下に 1 アプリ 1 フォルダで分け、フォルダ構成はシンプルで分かりやすく保つ。
 
+## GitHub との同期
+
+- リモート: https://github.com/take-undead/android (`origin`、ブランチ `main`)。2026-10-14 に初回 push。
+- コミット・push はユーザーの指示があったときだけ行う。push 前に `git ls-tree -r --name-only HEAD` で
+  config.txt・APK・local.properties・`.claude/settings.local.json` が入っていないことを確かめる(`.gitignore` 済み)。
+- 改行は `.gitattributes` で管理(`gradlew` は LF 固定。Windows の autocrlf で壊れないように)。
+
 ## 作業ルール
 
 - 根拠なく判断しない。ライブラリのバージョン・設定値・API の振る舞いは公式ドキュメントか
@@ -276,6 +283,7 @@ PowerShell で確認した事実:
 
 ## 作業記録
 
+- 2026-10-14 12:10: git 初期化、最初のコミット(61 ファイル)を https://github.com/take-undead/android に push。
 - 2026-10-14 12:00: チャイムが鳴らない → おやすみモードが原因。用途を USAGE_ALARM に変えて解決(利用者が「鳴りました」と確認)。
   アプリは端末のアプリ一覧に「MT5 Monitor」(紺地に白い三角のアイコン)として入っている(利用者が見つけたことを確認)。
   APK は `apps/mt5mon/app/build/outputs/apk/debug/app-debug.apk`(git 管理外)。
