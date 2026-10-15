@@ -65,8 +65,14 @@
     <string name="ea_dead">停止</string>
 
     <!-- 知らせ -->
-    <string name="notice_title">VPS からの知らせ（スプレッド警報の調査）</string>
-    <string name="notice_head">警報 %1$s  spread %2$.2f pips（しきい値 %3$.2f）  判断 #%4$d → #%5$d</string>
+    <string name="notice_title">スプレッド警報 → Claude の調査</string>
+    <string name="notice_title_move">値動き警報 → Claude の調査</string>
+    <!-- %1 警報の時刻、%2 値（下の 2 つのどちらか）、%3 調査を終えた時刻、%4 結果 -->
+    <string name="notice_head">%1$s 警報 %2$s → %3$s %4$s</string>
+    <string name="notice_value_spread">%1$.2fp（≧%2$.1f）</string>
+    <string name="notice_value_move">%1$s%2$.1fp/%3$d秒（≧%4$.0f）</string>
+    <string name="notice_result_changed">判断更新 #%1$d</string>
+    <string name="notice_result_same">変更なし</string>
     <string name="notice_done">調査を終えた時刻 %1$s</string>
     <string name="notice_auto_close">あと %1$d 秒で自動で閉じる</string>
 

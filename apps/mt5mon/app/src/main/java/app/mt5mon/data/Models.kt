@@ -96,10 +96,15 @@ data class NetStat(val net: String, val cc: String, val ips: Int, val fails: Lon
 data class ChatPage(val busy: Boolean, val busySec: Int, val last: Int, val msgs: List<ChatMsg>)
 data class ChatMsg(val num: Int, val who: String, val t: String, val text: String) // who: me / ai / err
 
-/** /notice.json（スプレッド警報 → Claude 監督の調査結果） */
+/**
+ * /notice.json（スプレッド警報・値動き警報 → Claude 監督の調査結果）。
+ * move = 値動き警報（type=move / kind=move_alert。EA_One v0.16、2026-10-14 に picoclac の notice.c に追加されたものと同じ読み方）。
+ * move のときは VPS が値動きの pips を spread_pips にも入れる。movePips は窓の高値−安値、moveSec は窓の秒、moveDir は向き（+1 上げ / -1 下げ / 0 不明）
+ */
 data class Notice(
     val doneJst: String, val alertJst: String, val spread: Double, val thr: Double,
     val seqBefore: Int, val seqAfter: Int, val text: String,
+    val move: Boolean = false, val movePips: Double = 0.0, val moveSec: Int = 60, val moveDir: Int = 0,
 )
 
 /** POST の応答 {"ok":…,"msg":…} */

@@ -250,11 +250,17 @@ object Parsers {
 
     fun notice(body: String): Notice {
         val j = root(body, "notice.json")
+        val spread = j.num("spread_pips")
+        val move = j.str("type") == "move" || j.str("kind") == "move_alert"
         return Notice(
             doneJst = j.str("done_jst"), alertJst = j.str("alert_jst"),
-            spread = j.num("spread_pips"), thr = j.num("threshold_pips"),
+            spread = spread, thr = j.num("threshold_pips"),
             seqBefore = j.optInt("seq_before", 0), seqAfter = j.optInt("seq_after", 0),
             text = j.str("text"),
+            move = move,
+            movePips = j.num("move_pips", if (move) spread else 0.0),
+            moveSec = j.optInt("move_sec", 60),
+            moveDir = j.optInt("move_dir", 0),
         )
     }
 

@@ -55,11 +55,17 @@ fun NoticeDialog(n: Notice, secondsLeft: Int, onClose: () -> Unit) {
     AlertDialog(
         onDismissRequest = onClose,
         containerColor = Mt5Colors.noticeBg,
-        title = { Text(stringResource(R.string.notice_title), color = Mt5Colors.sym) },
+        title = { Text(stringResource(if (n.move) R.string.notice_title_move else R.string.notice_title), color = Mt5Colors.sym) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                // 2 行目: スプレッド警報は「値(≧しきい値)」、値動き警報は「向き 幅p/秒(≧しきい値)」（picoclac の notice.c と同じ）
+                val value = if (n.move) {
+                    val arrow = if (n.moveDir > 0) "↑" else if (n.moveDir < 0) "↓" else ""
+                    stringResource(R.string.notice_value_move, arrow, n.movePips, n.moveSec, n.thr)
+                } else stringResource(R.string.notice_value_spread, n.spread, n.thr)
+                val result = if (n.seqAfter != n.seqBefore) stringResource(R.string.notice_result_changed, n.seqAfter) else stringResource(R.string.notice_result_same)
                 Text(
-                    stringResource(R.string.notice_head, shortTime(n.alertJst), n.spread, n.thr, n.seqBefore, n.seqAfter),
+                    stringResource(R.string.notice_head, shortTime(n.alertJst), value, timePart(n.doneJst), result),
                     color = Mt5Colors.head, style = MaterialTheme.typography.bodySmall,
                 )
                 Text(n.text, color = Mt5Colors.text, modifier = Modifier.padding(top = 8.dp))

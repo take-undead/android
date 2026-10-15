@@ -329,6 +329,22 @@ PowerShell で確認した事実:
 - 動作の見込み(推測): Android 6 以上で VPN が使える端末なら動く可能性が高い。VPN が削られた端末は root が取れないと張れない。
   メーカー独自の節電で裏のアプリを止める端末では、画面を開いたままの専用機として使う。
 
+### picoclac 側の更新の追従(2026-10-15 09:40)
+
+- picoclac のコミット `0241f1f`(値動き警報 type=move への対応。EA_One v0.16)を Android 版に写した。
+  `notice.json` の `type` / `kind`・`move_pips`・`move_sec`・`move_dir` を読み(`Parsers.notice`、`Notice` に 4 項目追加)、
+  ポップアップの見出しを「値動き警報 → Claude の調査」、2 行目を「HH:MM 警報 ↓16.3p/60秒（≧15） → HH:MM 判断更新 #8」の形にした
+  (スプレッド警報は「1.60p（≧1.5）」。picoclac の `notice.c` の `notice_ui_draw` と同じ組み立て。文字列は strings.xml)。
+- 仕様の正は `MT5/NEW_EA/BRIDGE.md`(vscode- リポジトリ)の「値動き警報」。
+- **追従の手順**: picoclac の `git log 43035f8..HEAD -- apps/net AGENTS.md` で差分を見て、`notice.c` / `status.c` / `attack.c` / `nippo.c` /
+  vpschat `main.c` の読み方の変更を `data/Parsers.kt` と対応する画面に写す。次回は `0241f1f..HEAD`。
+- 3 台目 MP01(Android 11、user/release-keys = 信用できる正規ビルド)に mt5mon を入れた(09:30)。
+- 利用者「つなぐがない」→ 「つなぐ」は config.txt を読み込むまで押せない作り(`enabled = ui.config != null`)。端末に鍵のファイルも無かった。
+  こちらで Download に置いたが、**MP01 のファイル選択画面(「ドキュメント」)にも adb で置いたファイルが出なかった**(利用者の報告。BL8800Pro では出た)。
+  → H1 と同じく「開く」の口で渡した(`am start … -a VIEW -d content://media/external/file/16249 -t text/plain --grant-read-uri-permission`)。
+  09:35 に WireGuard が上がり LIVE のデータが出た(VPN の許可画面は出ずに通った)。Download の鍵のファイルは消した。
+- **鍵を新しい端末に入れるときは、ファイル選択画面に頼らず「開く」の口で渡すのが確実**(3 台中 2 台で選択画面が使えなかった)。
+
 ### 残る課題
 
 - PicoCalc と同時に使うと取り合いになる(同じピア)。運用では片方だけつなぐ。
@@ -387,6 +403,7 @@ PowerShell で確認した事実:
 
 ## 作業記録
 
+- 2026-10-15 09:40: mt5mon を picoclac の更新(値動き警報の知らせ)に追従し、MP01 に入れた。鍵は「開く」の口で渡し、LIVE を確認。GitHub 未 push。
 - 2026-10-15 09:22: 3 台目の端末 MP01(Android 11)に esp32cam を入れ、実機カメラの映像を確認(上の esp32cam の節)。GitHub 未 push。
 - 2026-10-14 14:40: esp32cam を実機カメラ(192.168.0.141)で確認。ボタンを 1 段の小さなものに、タイルを画面いっぱいに、ダブルタップで全画面を追加。
   mt5mon(H1 対応)と esp32cam をまとめてコミット・push(利用者の指示)。
