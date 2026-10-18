@@ -91,6 +91,7 @@ import kotlin.math.roundToInt
 import app.thermalcam.lepton.CameraProblem
 import app.thermalcam.lepton.Gain
 import app.thermalcam.thermal.OverlayMode
+import app.thermalcam.data.BaseCamera
 import app.thermalcam.thermal.Palette
 import app.thermalcam.ui.theme.ThermalColors
 import app.thermalcam.vm.Phase
@@ -452,7 +453,12 @@ private fun AdjustPanel(ui: ThermalUi, vm: ThermalViewModel, modifier: Modifier 
             }
         }
         if (s.overlay != OverlayMode.OFF) {
-            AlignSliders(ui.alignShown ?: s.align, vm)
+            // 土台のカメラ（サブ / メイン）。位置合わせはカメラごとに別に保存している
+            PanelMenu(
+                stringResource(R.string.base_camera_button, stringResource(baseCameraLabel(s.baseCamera))),
+                BaseCamera.entries.map { Triple(stringResource(baseCameraLong(it)), it == s.baseCamera) { vm.setBaseCamera(it); Unit } },
+            )
+            AlignSliders(ui.alignShown ?: s.activeAlign, vm)
             val score = ui.proposalScore
             if (score != null) {
                 // 自動の提案を見せている間: 輪郭を見て、採用するかやめるかを選ぶ
@@ -507,6 +513,8 @@ private enum class Material(val label: Int, val emissivity: Float) {
     POLISHED_METAL(R.string.mat_polished, 0.05f),
 }
 
+private fun baseCameraLabel(v: BaseCamera) = when (v) { BaseCamera.SUB -> R.string.base_camera_sub; BaseCamera.MAIN -> R.string.base_camera_main }
+private fun baseCameraLong(v: BaseCamera) = when (v) { BaseCamera.SUB -> R.string.base_camera_sub_long; BaseCamera.MAIN -> R.string.base_camera_main_long }
 private fun smoothLabel(v: Smooth) = when (v) { Smooth.OFF -> R.string.smooth_off; Smooth.LOW -> R.string.smooth_low; Smooth.HIGH -> R.string.smooth_high }
 private fun smoothLong(v: Smooth) = when (v) { Smooth.OFF -> R.string.smooth_off_long; Smooth.LOW -> R.string.smooth_low_long; Smooth.HIGH -> R.string.smooth_high_long }
 
@@ -595,6 +603,7 @@ private fun overlayLabel(o: OverlayMode) = when (o) {
     OverlayMode.EDGES -> R.string.overlay_edges
     OverlayMode.LINES -> R.string.overlay_lines
     OverlayMode.BLEND -> R.string.overlay_blend
+    OverlayMode.COLOR -> R.string.overlay_color
 }
 
 private fun overlayShort(o: OverlayMode) = when (o) {
@@ -602,6 +611,7 @@ private fun overlayShort(o: OverlayMode) = when (o) {
     OverlayMode.EDGES -> R.string.overlay_short_edges
     OverlayMode.LINES -> R.string.overlay_short_lines
     OverlayMode.BLEND -> R.string.overlay_short_blend
+    OverlayMode.COLOR -> R.string.overlay_short_color
 }
 
 private fun overlayTool(o: OverlayMode) = when (o) {
@@ -609,4 +619,5 @@ private fun overlayTool(o: OverlayMode) = when (o) {
     OverlayMode.EDGES -> R.string.tool_overlay_edges
     OverlayMode.LINES -> R.string.tool_overlay_lines
     OverlayMode.BLEND -> R.string.tool_overlay_blend
+    OverlayMode.COLOR -> R.string.tool_overlay_color
 }

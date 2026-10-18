@@ -36,6 +36,20 @@ object VisibleCamera {
         return ids.firstOrNull { cm.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK }
     }
 
+    /** 画像の面を width × height の行ごとの並びに写す（pixelStride が 1 なら行ごとにまとめて写す） */
+    private fun copyPlane(plane: android.media.Image.Plane, width: Int, height: Int): ByteArray {
+        val buf = plane.buffer
+        val rs = plane.rowStride
+        val ps = plane.pixelStride
+        val out = ByteArray(width * height)
+        if (ps == 1) {
+            for (y in 0 until height) { buf.position(y * rs); buf.get(out, y * width, width) }
+        } else {
+            for (y in 0 until height) for (x in 0 until width) out[y * width + x] = buf.get(y * rs + x * ps)
+        }
+        return out
+    }
+
     /** 呼ぶ前に CAMERA の権限を確かめておくこと */
     @SuppressLint("MissingPermission") // 呼び出し側（ViewModel）で権限を確かめてから流す
     fun frames(context: Context, cameraId: String): Flow<Luma> = callbackFlow {
@@ -57,17 +71,11 @@ object VisibleCamera {
                 val now = android.os.SystemClock.elapsedRealtime()
                 if (now - lastCopy < MIN_COPY_INTERVAL_MS) return@use
                 lastCopy = now
-                val plane = it.planes[0]
-                val buf = plane.buffer
-                val rs = plane.rowStride
-                val ps = plane.pixelStride
-                val out = ByteArray(WIDTH * HEIGHT)
-                if (ps == 1) {
-                    for (y in 0 until HEIGHT) { buf.position(y * rs); buf.get(out, y * WIDTH, WIDTH) }
-                } else {
-                    for (y in 0 until HEIGHT) for (x in 0 until WIDTH) out[y * WIDTH + x] = buf.get(y * rs + x * ps)
-                }
-                trySend(Luma(out, WIDTH, HEIGHT, orient))
+                val out = copyPlane(it.planes[0], WIDTH, HEIGHT)
+                // 色差は半分の大きさ（カラー土台で色を出すため。白黒の重ね方では使わない）
+                val u = copyPlane(it.planes[1], WIDTH / 2, HEIGHT / 2)
+                val v = copyPlane(it.planes[2], WIDTH / 2, HEIGHT / 2)
+                trySend(Luma(out, WIDTH, HEIGHT, orient, u, v))
             }
         }, handler)
 

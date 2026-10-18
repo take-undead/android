@@ -4,14 +4,21 @@ import android.graphics.Bitmap
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** 可視カメラの明るさ（Y）1 枚。width × height、行ごと */
-class Luma(val data: ByteArray, val width: Int, val height: Int, val orientation: Orientation)
+/**
+ * 可視カメラ 1 枚。data = 明るさ（Y、width × height、行ごと）。
+ * u / v = 色差（横・縦とも半分の大きさ、行ごと）。「カラー土台」で色を出すのに使う。無ければ白黒
+ */
+class Luma(
+    val data: ByteArray, val width: Int, val height: Int, val orientation: Orientation,
+    val u: ByteArray? = null, val v: ByteArray? = null,
+)
 
 /**
  * 重ね方。名前は設定と記憶にそのまま保存するので変えない（CLAUDE.md G3）。
- * EDGES = 細部の明暗を足す（MSX 風）、LINES = 輪郭を白い線で描く、BLEND = 白黒の映像を半透明で重ねる
+ * EDGES = 細部の明暗を足す（MSX 風）、LINES = 輪郭を白い線で描く、BLEND = 白黒の映像を半透明で重ねる、
+ * COLOR = カラー映像を土台にして、熱画像を半透明で重ねる（熱画像は画角が狭いので中央だけに乗る）
  */
-enum class OverlayMode { OFF, EDGES, LINES, BLEND }
+enum class OverlayMode { OFF, EDGES, LINES, BLEND, COLOR }
 
 /**
  * 熱画像と可視画像の位置合わせ。熱画像の画面座標 (dx, dy) は可視画像の画面座標
@@ -76,14 +83,15 @@ object Renderer {
         val nw = ThermalFrame.WIDTH; val nh = ThermalFrame.HEIGHT
         val w = (if (orient.swapsAxes) nh else nw) * SCALE
         val h = (if (orient.swapsAxes) nw else nh) * SCALE
+        if (mode == OverlayMode.COLOR && luma != null) return renderOnColor(f, lo, hi, palette, orient, luma, align, w, h)
         val px = IntArray(w * h)
         val lut = palette.lut
         val span = (hi - lo).coerceAtLeast(0.1f)
         val t = f.celsius
         val p = FloatArray(2)
 
-        // 可視画像を熱画像の画面の格子に並べ直す（重ねないときは作らない）
-        val vis: FloatArray? = if (luma != null && mode != OverlayMode.OFF) sampleLuma(luma, w, h, align) else null
+        // 可視画像を熱画像の画面の格子に並べ直す（重ねないときは作らない。COLOR で可視が無いときは熱画像だけ）
+        val vis: FloatArray? = if (luma != null && mode != OverlayMode.OFF && mode != OverlayMode.COLOR) sampleLuma(luma, w, h, align) else null
         val detail: FloatArray? = if (vis != null && mode == OverlayMode.EDGES) highPass(vis, w, h) else null
         val lines: FloatArray? = if (vis != null && mode == OverlayMode.LINES) lines(vis, w, h, lineFraction(edgeLevel)) else null
 
@@ -107,6 +115,62 @@ object Renderer {
                 c = mix(c, vis[o], 0.45f)
             }
             px[o] = c
+        }
+        return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+    }
+
+    /** カラー土台で、可視の色に重ねる熱画像の濃さ（0 = 色だけ、1 = 熱画像だけ） */
+    const val COLOR_THERMAL_ALPHA = 0.6f
+
+    /**
+     * カラー土台: 画面の格子は可視画像の全体（縦持ちで 3:4。熱画像の 480×640 と同じ比）。
+     * 各点の可視の色を出し、位置合わせの逆変換で当たる熱画像の点があればその色を半透明で乗せる。
+     * 熱画像の画角（50°）は可視（72°）より狭いので、scale 0.644 なら中央の約 64% × 64% にだけ乗る。
+     */
+    private fun renderOnColor(
+        f: ThermalFrame, lo: Float, hi: Float, palette: Palette, orient: Orientation,
+        l: Luma, a: Alignment, w: Int, h: Int,
+    ): Bitmap {
+        val nw = ThermalFrame.WIDTH; val nh = ThermalFrame.HEIGHT
+        val px = IntArray(w * h)
+        val lut = palette.lut
+        val span = (hi - lo).coerceAtLeast(0.1f)
+        val t = f.celsius
+        val p = FloatArray(2)
+        val cw = l.width / 2
+        val k = COLOR_THERMAL_ALPHA
+        for (oy in 0 until h) for (ox in 0 until w) {
+            val vx = (ox + 0.5f) / w; val vy = (oy + 0.5f) / h
+            // 可視の色（BT.601。NightProcessor と同じ式）
+            l.orientation.toNative(vx, vy, p)
+            val sx = (p[0] * l.width).toInt().coerceIn(0, l.width - 1)
+            val sy = (p[1] * l.height).toInt().coerceIn(0, l.height - 1)
+            val yy = (l.data[sy * l.width + sx].toInt() and 0xFF).toFloat()
+            var r = yy; var g = yy; var b = yy
+            if (l.u != null && l.v != null) {
+                val ci = (sy / 2) * cw + sx / 2
+                val uu = (l.u[ci].toInt() and 0xFF) - 128f
+                val vv = (l.v[ci].toInt() and 0xFF) - 128f
+                r = yy + 1.402f * vv; g = yy - 0.344f * uu - 0.714f * vv; b = yy + 1.772f * uu
+            }
+            // この点に当たる熱画像の点（位置合わせの逆変換）
+            val dx = 0.5f + ((vx - 0.5f) - a.offsetX) / a.scale
+            val dy = 0.5f + ((vy - 0.5f) - a.offsetY) / a.scale
+            if (dx >= 0f && dx < 1f && dy >= 0f && dy < 1f) {
+                orient.toNative(dx, dy, p)
+                val fx = (p[0] * nw - 0.5f).coerceIn(0f, nw - 1f)
+                val fy = (p[1] * nh - 0.5f).coerceIn(0f, nh - 1f)
+                val x0 = fx.toInt().coerceAtMost(nw - 2); val y0 = fy.toInt().coerceAtMost(nh - 2)
+                val ax = fx - x0; val ay = fy - y0
+                val i0 = y0 * nw + x0
+                val v = (t[i0] * (1 - ax) + t[i0 + 1] * ax) * (1 - ay) + (t[i0 + nw] * (1 - ax) + t[i0 + nw + 1] * ax) * ay
+                val c = lut[(((v - lo) / span) * 255f).roundToInt().coerceIn(0, 255)]
+                r = r * (1 - k) + ((c shr 16) and 0xFF) * k
+                g = g * (1 - k) + ((c shr 8) and 0xFF) * k
+                b = b * (1 - k) + (c and 0xFF) * k
+            }
+            px[oy * w + ox] = (0xFF shl 24) or (r.roundToInt().coerceIn(0, 255) shl 16) or
+                (g.roundToInt().coerceIn(0, 255) shl 8) or b.roundToInt().coerceIn(0, 255)
         }
         return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
     }

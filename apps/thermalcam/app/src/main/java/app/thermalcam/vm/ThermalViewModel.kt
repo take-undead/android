@@ -26,6 +26,7 @@ import app.thermalcam.thermal.Luma
 import app.thermalcam.thermal.Marker
 import app.thermalcam.thermal.Orientation
 import app.thermalcam.thermal.OverlayMode
+import app.thermalcam.data.BaseCamera
 import app.thermalcam.thermal.Palette
 import app.thermalcam.thermal.PhotoComposer
 import app.thermalcam.thermal.Renderer
@@ -96,7 +97,7 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
          * 写真の向きや重ね合わせの計算はすべてこれを通す。
          */
         val THERMAL_ORIENTATION = Orientation(rotation = 270)
-        private const val VISIBLE_CAMERA_ID = 2 // LeptonService.getVisCamId() がこの端末で返す値（サービスのコードでも固定の 2）
+        // 可視カメラの番号は設定の BaseCamera（SUB = 2: LeptonService.getVisCamId() がこの端末で返す値、MAIN = 0）
         private const val AUTO_SMOOTH = 0.25f    // 自動範囲の追従の速さ（毎フレームの揺れで色がちらつかないように）
         private const val AUTO_MIN_SPAN = 2f     // 自動範囲の最小の幅（℃）。これより狭いと雑音が色の模様に見える
     }
@@ -148,7 +149,12 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
             store.settings.collect { s ->
                 val before = _ui.value.settings
                 _ui.update { it.copy(settings = s) }
-                if (before.overlay != s.overlay) updateVisible()
+                if (before.baseCamera != s.baseCamera) {
+                    // 土台のカメラが変わったら可視カメラを開き直す（前のが閉じるのを CameraGate が待つ）
+                    visibleJob?.cancel(); visibleJob = null; luma = null
+                    alignLive = null; _ui.update { it.copy(alignShown = null, proposalScore = null) }
+                }
+                if (before.overlay != s.overlay || before.baseCamera != s.baseCamera) updateVisible()
             }
         }
         viewModelScope.launch { store.presets.collect { p -> _ui.update { it.copy(presets = p) } } }
@@ -210,7 +216,11 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
         val auto = autoRange(st) // 固定中も追い続ける（自動に戻したときに飛ばないように）
         val (lo, hi) = rangeLive ?: if (s.autoRange) auto else (s.rangeLo to s.rangeHi)
         val l = if (s.overlay != OverlayMode.OFF) luma else null
-        val portrait = Renderer.render(f, lo, hi, s.palette, THERMAL_ORIENTATION, l, s.overlay, alignLive ?: s.align, edgeLive ?: s.edgeLevel)
+        val a = alignLive ?: s.activeAlign
+        // カラー土台のときは画面の枠が可視画像なので、印の座標を位置合わせで熱画像 → 可視画像に写す
+        colorBase = s.overlay == OverlayMode.COLOR && l != null
+        lastAlign = a
+        val portrait = Renderer.render(f, lo, hi, s.palette, THERMAL_ORIENTATION, l, s.overlay, a, edgeLive ?: s.edgeLevel)
         _image.value = toScreen(portrait)
         _ui.update {
             it.copy(
@@ -235,15 +245,36 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
 
     private val tmp = FloatArray(2)
 
+    /** 今の画面の枠が可視画像（カラー土台）か。印と点の座標の変換に使う */
+    @Volatile private var colorBase = false
+    @Volatile private var lastAlign = Alignment()
+
+    /** 熱画像の縦持ちの座標 → 画面の枠の座標（カラー土台なら位置合わせで可視画像の座標に） */
+    private fun frameToImage(dx: Float, dy: Float, out: FloatArray) {
+        if (!colorBase) { out[0] = dx; out[1] = dy; return }
+        val a = lastAlign
+        out[0] = 0.5f + (dx - 0.5f) * a.scale + a.offsetX
+        out[1] = 0.5f + (dy - 0.5f) * a.scale + a.offsetY
+    }
+
+    /** 画面の枠の座標 → 熱画像の縦持ちの座標（frameToImage の逆） */
+    private fun imageToFrame(ix: Float, iy: Float, out: FloatArray) {
+        if (!colorBase) { out[0] = ix; out[1] = iy; return }
+        val a = lastAlign
+        out[0] = 0.5f + ((ix - 0.5f) - a.offsetX) / a.scale
+        out[1] = 0.5f + ((iy - 0.5f) - a.offsetY) / a.scale
+    }
+
     private fun toScreen(b: Bitmap): Bitmap {
         val r = screen.rotation
         if (r == 0) return b
         return Bitmap.createBitmap(b, 0, 0, b.width, b.height, Matrix().apply { postRotate(r.toFloat()) }, false)
     }
 
-    /** 縦持ちの枠の座標 → 画面の座標 */
+    /** 熱画像の縦持ちの座標 → 画面の座標 */
     private fun screenMarker(px: Float, py: Float, c: Float): Marker {
-        screen.toDisplay(px, py, tmp)
+        frameToImage(px, py, tmp)
+        screen.toDisplay(tmp[0], tmp[1], tmp)
         return Marker(tmp[0], tmp[1], c)
     }
 
@@ -268,7 +299,8 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
     /** 画面をタップした位置に点を動かす（画面の 0〜1） */
     fun setSpot(x: Float, y: Float) {
         screen.toNative(x.coerceIn(0f, 1f), y.coerceIn(0f, 1f), tmp)
-        spotPos = tmp[0] to tmp[1]
+        imageToFrame(tmp[0], tmp[1], tmp) // カラー土台で熱画像の外をタップしたら、一番近い端に寄せる
+        spotPos = tmp[0].coerceIn(0f, 0.999f) to tmp[1].coerceIn(0f, 0.999f)
         lastFrame?.let { f -> _ui.update { it.copy(spot = spotMarker(f)) } }
     }
 
@@ -331,6 +363,9 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(edgeShown = null) }
     }
 
+    /** 重ね合わせの土台にする可視カメラ（サブ / メイン）。開き直しと位置合わせの切り替えは設定の流れで行う */
+    fun setBaseCamera(cam: BaseCamera) = viewModelScope.launch { store.setBaseCamera(cam) }
+
     fun setOverlay(mode: OverlayMode) = viewModelScope.launch {
         if (mode != OverlayMode.OFF && !hasCameraPermission()) {
             _ui.update { it.copy(message = UiMessage.CameraPermissionDenied) }
@@ -340,7 +375,7 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** 今の位置合わせ（動かしている途中ならその値） */
-    fun currentAlign(): Alignment = alignLive ?: _ui.value.settings.align
+    fun currentAlign(): Alignment = alignLive ?: _ui.value.settings.activeAlign
 
     /** 位置合わせを動かしている間（スライダー・指でのドラッグとつまみ） */
     fun setAlignLive(a: Alignment) {
@@ -350,13 +385,14 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
 
     fun commitAlign() = viewModelScope.launch {
         val a = alignLive ?: return@launch
-        store.setAlign(a)
+        store.setAlign(a, _ui.value.settings.baseCamera)
         alignLive = null
         _ui.update { it.copy(alignShown = null, proposalScore = null) }
     }
 
     fun resetAlign() = viewModelScope.launch {
-        alignLive = null; store.setAlign(Alignment()); _ui.update { it.copy(alignShown = null, proposalScore = null) }
+        val cam = _ui.value.settings.baseCamera
+        alignLive = null; store.setAlign(cam.defaultAlign, cam); _ui.update { it.copy(alignShown = null, proposalScore = null) }
     }
 
     /** 自動位置合わせ: 今の熱画像と可視画像の輪郭が一番重なる位置を探して「提案」として見せる */
@@ -430,7 +466,7 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (visibleJob?.isActive == true) return
         val app = getApplication<Application>()
-        val id = runCatching { VisibleCamera.pickCamera(app, VISIBLE_CAMERA_ID) }.getOrNull()
+        val id = runCatching { VisibleCamera.pickCamera(app, _ui.value.settings.baseCamera.cameraId) }.getOrNull()
         if (id == null) { _ui.update { it.copy(message = UiMessage.VisibleFailed) }; return }
         visibleJob = viewModelScope.launch(Dispatchers.Default) {
             _ui.update { it.copy(visibleActive = true) }

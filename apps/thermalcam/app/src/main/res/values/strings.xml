@@ -59,10 +59,17 @@
     <string name="overlay_edges">輪郭を重ねる（細部の明暗）</string>
     <string name="overlay_lines">白い線で輪郭を描く</string>
     <string name="overlay_blend">映像を半透明で重ねる</string>
+    <string name="overlay_color">カラー映像を土台にして熱画像を重ねる</string>
+    <string name="base_camera_button">土台: %1$s</string>
+    <string name="base_camera_sub">サブ</string>
+    <string name="base_camera_main">メイン</string>
+    <string name="base_camera_sub_long">サブカメラ（ID 2・画角 72°・熱カメラの隣の小さいレンズ）</string>
+    <string name="base_camera_main_long">メインカメラ（ID 0・画角 62°・一番大きいレンズ）</string>
     <string name="overlay_short_off">重ね: なし</string>
     <string name="overlay_short_edges">重ね: 輪郭</string>
     <string name="overlay_short_lines">重ね: 白線</string>
     <string name="overlay_short_blend">重ね: 映像</string>
+    <string name="overlay_short_color">カラー土台</string>
     <string name="ffc">温度校正</string>
     <string name="capture_long">長押しで撮影</string>
     <string name="capture_hint">長押ししてください</string>
@@ -131,6 +138,7 @@
     <string name="tool_overlay_edges">輪郭</string>
     <string name="tool_overlay_lines">白線</string>
     <string name="tool_overlay_blend">映像</string>
+    <string name="tool_overlay_color">カラー</string>
     <string name="memory_title">設定の記憶（1〜5）</string>
     <string name="memory_hint">色・範囲・測定範囲・重ね方・位置合わせをまとめて記憶します。狂ったときは「呼び出す」で戻せます</string>
     <string name="memory_empty">（空き）</string>
