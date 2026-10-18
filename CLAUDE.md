@@ -456,6 +456,13 @@ PowerShell で確認した事実:
 
 ## 作業記録
 
+- 2026-10-18: 6 台目の正体を root で調べる作業を着手前に中止（利用者「カメラ見つけるだけで、大掛かりすぎ」）。端末は未変更。
+  途中で PC が固まった（原因未特定）。PC の UsbDk・mtkclient・Zadig・Magisk のダウンロードを片付け、settings.local.json の root 用 Bash 許可を外した。
+  端末の Magisk アプリ（未使用）は次に USB でつないだときにアンインストールする。退避 `C:\Users\datak\thermalcam_backup_20261018_2235` は残す。
+  反省: 「正体の確認」だけのために全消去・鍵の作り直しを伴う root 化を提案した。目的と手段の釣り合いを先に示すべきだった（README「6 台目のカメラ」）。
+- 2026-10-18: 6 台目のカメラを調べた。/sys/bus/i2c の符号リンクからカーネルの部品表（camera_main/sub/main_two/main_three/sub_two + AF + EEPROM）が root なしで読めた。
+  下回りの起動記録で 5 枠を探索し 4 つ登録、sub_two の枠だけセンサー無応答（README「6 台目のカメラ」）。root なしで読める所は尽きた。
+  訂正 2 件: 「短い探索 = 見つからず」は逆、「バス 4 の 0x2a = Lepton」は誤り（camera_sub）。GitHub 未 push。
 - 2026-10-18: 背面 4 つのレンズを確定。一番大きいレンズの隣はサーマルの窓（熱画像でふさぐ試験）、4 つ目は ID 0・1・2・サーマル以外で、
   残る GC032A とみられる（推測）。README の「レンズと番号の対応」「センサーの正体」を更新。GitHub 未 push。
 - 2026-10-18: thermalcam の見つかっていないカメラを調べた。camerahalserver の記録から、載っているセンサーは S5KJN1・S5K3P9SP・GC5035・GC032A の 4 つと判明。
