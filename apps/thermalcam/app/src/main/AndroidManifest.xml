@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 権限は最小限（CLAUDE.md B1）。サーマルカメラはシステムのサービス経由で、権限は要らない（LeptonService.open に権限確認が無いことを確認済み）。
+         CAMERA は重ね合わせに使う可視カメラのためだけ。「重ねる」を選んだときに求める -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.NoActionBar">
+        <!-- 【注意】android:screenOrientation は付けない（縦固定するとタブレット対応時に全画面を直す羽目になる。lint がエラーにする） -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

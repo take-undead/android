@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">サーマルカメラ</string>
+
+    <!-- 状態 -->
+    <string name="status_starting">カメラを起動中（約 6 秒）</string>
+    <string name="status_ffc">校正中（少しの間、映像が止まります）</string>
+    <string name="status_ffc_desired">校正をおすすめします</string>
+    <string name="status_sensor">センサー %1$s</string>
+    <string name="problem_no_service">この端末にはサーマルカメラのサービスがありません</string>
+    <string name="problem_open">サーマルカメラを開けませんでした（他のアプリが使用中かもしれません）%1$s</string>
+    <string name="problem_setup">サーマルカメラの設定に失敗しました %1$s</string>
+    <string name="problem_no_frames">映像が届きません</string>
+    <string name="problem_io">カメラへの指示に失敗しました %1$s</string>
+    <string name="retry">やり直す</string>
+
+    <!-- 温度の表示 -->
+    <string name="max_short">▲%1$.1f℃</string>
+    <string name="min_short">▼%1$.1f℃</string>
+    <string name="celsius">%1$.1f℃</string>
+
+    <!-- 操作 -->
+    <string name="palette_iron">アイアン</string>
+    <string name="palette_rainbow">レインボー</string>
+    <string name="palette_white_hot">白が高温</string>
+    <string name="palette_black_hot">黒が高温</string>
+    <string name="range_auto">範囲: 自動</string>
+    <string name="range_label">範囲</string>
+    <string name="edge_level">輪郭</string>
+    <string name="gain_high">通常（−10〜140℃・高精度）</string>
+    <string name="gain_low">高温（−10〜450℃）</string>
+    <string name="gain_auto">自動切り替え</string>
+    <string name="gain_short_high">〜140℃</string>
+    <string name="gain_short_low">〜450℃</string>
+    <string name="gain_short_auto">〜450℃ 自動</string>
+    <string name="overlay_off">熱画像のみ</string>
+    <string name="overlay_edges">輪郭を重ねる（細部の明暗）</string>
+    <string name="overlay_lines">白い線で輪郭を描く</string>
+    <string name="overlay_blend">映像を半透明で重ねる</string>
+    <string name="overlay_short_off">重ね: なし</string>
+    <string name="overlay_short_edges">重ね: 輪郭</string>
+    <string name="overlay_short_lines">重ね: 白線</string>
+    <string name="overlay_short_blend">重ね: 映像</string>
+    <string name="ffc">温度校正</string>
+    <string name="capture_long">長押しで撮影</string>
+    <string name="capture_hint">長押ししてください</string>
+    <string name="photos">写真</string>
+    <string name="photos_title">写真（%1$d 枚）ピクチャ/ThermalCam</string>
+    <string name="photos_empty">まだ写真がありません。「撮影」で保存した写真がここに出ます</string>
+    <string name="photo_title">%1$d / %2$d　%3$s</string>
+    <string name="back">戻る</string>
+    <string name="select_count">%1$d 枚を選択</string>
+    <string name="select_hint">長押しで選んで削除できます</string>
+    <string name="delete">削除</string>
+    <string name="cancel">やめる</string>
+    <string name="select_all">すべて選ぶ</string>
+    <string name="delete_confirm_title">%1$d 枚の写真を削除しますか？</string>
+    <string name="delete_confirm_text">写真と、同じ名前の温度データ（CSV）を端末から消します。元に戻せません</string>
+    <string name="deleted">%1$d 枚を削除しました</string>
+    <string name="delete_failed">%1$d 枚は削除できませんでした</string>
+    <string name="saving">保存中…</string>
+    <string name="align_reset">位置を戻す</string>
+    <string name="adjust">調整</string>
+    <string name="auto_align">自動で合わせる</string>
+    <string name="auto_align_busy">合わせています…</string>
+    <string name="proposal">自動の提案を表示中（一致度 %1$.2f）。輪郭が合っているか見て決めてください。明暗の境目に引っ張られて少しずれることがあります</string>
+    <string name="proposal_accept">採用</string>
+    <string name="proposal_reject">やめる</string>
+    <string name="memory">記憶</string>
+    <string name="tool_range_auto">範囲自動</string>
+    <string name="tool_range_fixed">範囲固定</string>
+    <string name="tool_overlay_off">重ねなし</string>
+    <string name="tool_overlay_edges">輪郭</string>
+    <string name="tool_overlay_lines">白線</string>
+    <string name="tool_overlay_blend">映像</string>
+    <string name="memory_title">設定の記憶（1〜5）</string>
+    <string name="memory_hint">色・範囲・測定範囲・重ね方・位置合わせをまとめて記憶します。狂ったときは「呼び出す」で戻せます</string>
+    <string name="memory_empty">（空き）</string>
+    <string name="memory_load">呼び出す</string>
+    <string name="memory_save">記憶</string>
+    <string name="memory_overwrite">上書き</string>
+    <string name="range_summary_fixed">%1$.1f〜%2$.1f℃</string>
+    <string name="close">閉じる</string>
+    <string name="align_scale">大きさ</string>
+    <string name="align_x">左右</string>
+    <string name="align_y">上下</string>
+
+    <!-- 知らせ -->
+    <string name="saved">保存しました: %1$s（同じ名前の CSV に全画素の温度）</string>
+    <string name="save_failed">保存できませんでした</string>
+    <string name="camera_denied">重ね合わせには可視カメラの許可が必要です</string>
+    <string name="visible_failed">可視カメラを開けませんでした</string>
+    <string name="align_flat">熱画像に輪郭が少なく、合わせられませんでした（輪郭 %1$.2f）。温度差のある物を映して、もう一度押してください</string>
+    <string name="align_weak">一致する位置が見つかりませんでした（一致度 %1$.2f）。位置は変えていません</string>
+    <string name="align_no_visible">可視カメラの映像がまだありません</string>
+    <string name="memory_saved">%1$d 番に記憶しました</string>
+    <string name="memory_loaded">%1$d 番を呼び出しました</string>
+
+    <!-- 写真に書き込む文字 -->
+    <string name="photo_footer">%1$s　測定範囲: %2$s</string>
+</resources>
