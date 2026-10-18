@@ -54,6 +54,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -85,6 +86,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.thermalcam.R
 import app.thermalcam.data.Settings
+import app.thermalcam.data.Smooth
+import kotlin.math.roundToInt
 import app.thermalcam.lepton.CameraProblem
 import app.thermalcam.lepton.Gain
 import app.thermalcam.thermal.OverlayMode
@@ -99,16 +102,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import app.thermalcam.thermal.Alignment as Align
 
-/** シャッターを押し続ける時間（ms）。輪が一周したら撮る */
-private const val HOLD_MS = 600
-
 /**
  * カメラの画面。ふつうのカメラアプリの作法に合わせる:
  *  上 = 温度と色の帯 / 中 = 熱画像 / 下 = アイコンの道具の列と、写真・シャッター・温度校正の列。
  * 横画面は画像を高さいっぱいにし、右の欄に同じものを縦に並べる。
  */
 @Composable
-fun MainScreen(vm: ThermalViewModel, onOpenPhotos: () -> Unit, modifier: Modifier = Modifier) {
+fun MainScreen(vm: ThermalViewModel, onOpenPhotos: () -> Unit, onOpenNight: () -> Unit, modifier: Modifier = Modifier) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val image by vm.image.collectAsStateWithLifecycle()
     val lastPhoto by vm.lastPhoto.collectAsStateWithLifecycle()
@@ -134,6 +134,8 @@ fun MainScreen(vm: ThermalViewModel, onOpenPhotos: () -> Unit, modifier: Modifie
 
     val msgText = when (val m = ui.message) {
         is UiMessage.Saved -> stringResource(R.string.saved, m.where)
+        is UiMessage.SavedImage -> stringResource(R.string.saved_image, m.where)
+        is UiMessage.ShotFailed -> stringResource(R.string.shot_failed, m.reason)
         UiMessage.SaveFailed -> stringResource(R.string.save_failed)
         UiMessage.CameraPermissionDenied -> stringResource(R.string.camera_denied)
         UiMessage.VisibleFailed -> stringResource(R.string.visible_failed)
@@ -158,7 +160,12 @@ fun MainScreen(vm: ThermalViewModel, onOpenPhotos: () -> Unit, modifier: Modifie
     val tools: @Composable () -> Unit = {
         Tools(ui, vm, chooseOverlay, adjusting, onAdjust = { adjusting = !adjusting }, onMemory = { memory = true })
     }
-    val shutterRow: @Composable () -> Unit = { ShutterRow(ui, vm, lastPhoto, shutterHint, onOpenPhotos) }
+    val shutterRow: @Composable () -> Unit = {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            ModeBar(CameraMode.THERMAL, { if (it == CameraMode.NIGHT) onOpenNight() }, Modifier.padding(top = 4.dp))
+            ShutterRow(ui, vm, lastPhoto, shutterHint, onOpenPhotos)
+        }
+    }
 
     // 知らせの帯は画面の上の方に出す（下に出すとシャッターや道具を隠して押せなくなる）
     Scaffold(modifier, containerColor = ThermalColors.screen) { pad ->
@@ -308,7 +315,7 @@ private fun ColorBar(ui: ThermalUi, modifier: Modifier = Modifier) {
  * active のときはアクセント色（範囲を固定中・調整を開いている・重ねている など）
  */
 @Composable
-private fun Tool(icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, active: Boolean = false, enabled: Boolean = true) {
+internal fun Tool(icon: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, active: Boolean = false, enabled: Boolean = true) {
     val color = when {
         !enabled -> ThermalColors.subtle.copy(alpha = 0.5f)
         active -> ThermalColors.accent
@@ -327,7 +334,7 @@ private fun Tool(icon: Int, label: String, onClick: () -> Unit, modifier: Modifi
 
 /** 押すと選択肢が出る道具ボタン。今の選択には ✓ を付ける */
 @Composable
-private fun ToolMenu(icon: Int, label: String, items: List<Triple<String, Boolean, () -> Unit>>, active: Boolean = false) {
+internal fun ToolMenu(icon: Int, label: String, items: List<Triple<String, Boolean, () -> Unit>>, active: Boolean = false) {
     var open by remember { mutableStateOf(false) }
     Box {
         Tool(icon, label, { open = true }, active = active)
@@ -396,60 +403,6 @@ private fun ShutterRow(ui: ThermalUi, vm: ThermalViewModel, lastPhoto: Bitmap?, 
     }
 }
 
-/**
- * シャッター: 白い輪と中の円。押している間、輪に沿ってアクセント色が一周し、一周したら撮る（HOLD_MS）。
- * 途中で離したら撮らずに「長押しです」と知らせる（触れただけで撮れてしまうため。利用者の要望）。撮ったら端末を短く震わせる
- */
-@Composable
-private fun Shutter(enabled: Boolean, onCapture: () -> Unit, onShortTap: () -> Unit) {
-    val progress = remember { Animatable(0f) }
-    val pressed = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    val haptic = LocalHapticFeedback.current
-    val label = stringResource(R.string.capture_long)
-    val accent = ThermalColors.accent
-    Canvas(
-        Modifier.size(76.dp)
-            .semantics { contentDescription = label; role = Role.Button }
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
-                awaitEachGesture {
-                    awaitFirstDown()
-                    val anim = scope.launch {
-                        pressed.animateTo(1f, tween(120))
-                        progress.snapTo(0f)
-                        progress.animateTo(1f, tween(HOLD_MS - 120, easing = LinearEasing))
-                    }
-                    val up = withTimeoutOrNull(HOLD_MS.toLong()) { waitForUpOrCancellation() }
-                    if (up == null) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onCapture()
-                        waitForUpOrCancellation()
-                    } else {
-                        onShortTap()
-                    }
-                    anim.cancel()
-                    scope.launch { progress.animateTo(0f, tween(200)) }
-                    scope.launch { pressed.animateTo(0f, tween(150)) }
-                }
-            },
-    ) {
-        val r = size.minDimension / 2
-        val ring = 4.dp.toPx()
-        drawCircle(Color.White.copy(alpha = if (enabled) 1f else 0.4f), radius = r - ring / 2, style = Stroke(ring))
-        val inner = (r - ring - 5.dp.toPx()) * (1f - 0.08f * pressed.value)
-        drawCircle(if (enabled) Color.White else Color.White.copy(alpha = 0.3f), radius = inner)
-        drawCircle(accent, radius = inner * 0.32f * pressed.value)
-        if (progress.value > 0f) {
-            drawArc(
-                accent, startAngle = -90f, sweepAngle = 360f * progress.value, useCenter = false,
-                topLeft = Offset(ring / 2, ring / 2), size = Size(size.width - ring, size.height - ring),
-                style = Stroke(ring, cap = StrokeCap.Round),
-            )
-        }
-    }
-}
-
 /** 調整の板: 表示範囲・輪郭の強さ・位置合わせ（自動の提案を含む） */
 @Composable
 private fun AdjustPanel(ui: ThermalUi, vm: ThermalViewModel, modifier: Modifier = Modifier) {
@@ -457,6 +410,29 @@ private fun AdjustPanel(ui: ThermalUi, vm: ThermalViewModel, modifier: Modifier 
     Column(
         modifier.fillMaxWidth().background(ThermalColors.panel, RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
+        // 素材（放射率）・ざらつき減らし
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val mat = Material.entries.firstOrNull { kotlin.math.abs(it.emissivity - s.emissivity) < 0.005f }
+            PanelMenu(
+                stringResource(R.string.material_button, mat?.let { stringResource(it.label) } ?: stringResource(R.string.material_custom), s.emissivity),
+                Material.entries.map { Triple(stringResource(R.string.material_item, stringResource(it.label), it.emissivity), it == mat) { vm.setEmissivity(it.emissivity) } },
+            )
+            PanelMenu(
+                stringResource(smoothLabel(s.smooth)),
+                Smooth.entries.map { Triple(stringResource(smoothLong(it)), it == s.smooth) { vm.setSmooth(it) } },
+            )
+        }
+        if (s.emissivity < 0.5f) Text(stringResource(R.string.material_low_warn), style = MaterialTheme.typography.labelSmall, color = ThermalColors.warn)
+        SliderRow(R.string.emissivity_label) {
+            var live by remember(s.emissivity) { mutableFloatStateOf(s.emissivity) }
+            Slider(value = live, onValueChange = { live = (it * 100).roundToInt() / 100f }, onValueChangeFinished = { vm.setEmissivity(live) },
+                valueRange = 0.05f..1f, modifier = Modifier.fillMaxWidth().height(30.dp))
+        }
+        // Lepton 本体のスポットメーター（点の周り 3×3 画素）。アプリの計算（点の温度）と比べるための表示
+        ui.sensorSpot?.let { v ->
+            Text(stringResource(R.string.sensor_spot, v, ui.spot?.celsius ?: Float.NaN, ui.emissivityActual ?: s.emissivity),
+                style = MaterialTheme.typography.labelSmall, color = ThermalColors.subtle)
+        }
         val limit = if (s.gain == Gain.HIGH) -10f..140f else -10f..450f
         SliderRow(R.string.range_label) {
             RangeSlider(
@@ -495,6 +471,44 @@ private fun AdjustPanel(ui: ThermalUi, vm: ThermalViewModel, modifier: Modifier 
         }
     }
 }
+
+/** 調整の板の中の、押すと選択肢が出るボタン */
+@Composable
+private fun PanelMenu(label: String, items: List<Triple<String, Boolean, () -> Unit>>) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        PanelButton(label, { open = true })
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            items.forEach { (text, selected, action) ->
+                DropdownMenuItem(
+                    text = { Text(text, color = if (selected) ThermalColors.accent else Color.Unspecified) },
+                    trailingIcon = { if (selected) Text("✓", color = ThermalColors.accent) },
+                    onClick = { open = false; action() },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 素材と放射率の代表値（2026-10-18 に調べた放射率表の値。表によって幅がある。色・表面・温度でも変わる）
+ * 出典: ired.co.uk・ThermoWorks・Innova 3360 などの放射率表（README に記録）
+ */
+private enum class Material(val label: Int, val emissivity: Float) {
+    BLACKBODY(R.string.mat_default, 1.00f),
+    SKIN(R.string.mat_skin, 0.98f),
+    WATER(R.string.mat_water, 0.95f),
+    PAINT_BLACK(R.string.mat_paint_black, 0.95f),
+    RUBBER(R.string.mat_rubber, 0.94f),
+    CONCRETE(R.string.mat_concrete, 0.93f),
+    WOOD(R.string.mat_wood, 0.90f),
+    PAINT_WHITE(R.string.mat_paint_white, 0.84f),
+    RUSTY_STEEL(R.string.mat_rusty, 0.65f),
+    POLISHED_METAL(R.string.mat_polished, 0.05f),
+}
+
+private fun smoothLabel(v: Smooth) = when (v) { Smooth.OFF -> R.string.smooth_off; Smooth.LOW -> R.string.smooth_low; Smooth.HIGH -> R.string.smooth_high }
+private fun smoothLong(v: Smooth) = when (v) { Smooth.OFF -> R.string.smooth_off_long; Smooth.LOW -> R.string.smooth_low_long; Smooth.HIGH -> R.string.smooth_high_long }
 
 /** 調整の板や記憶の中で使う小さなボタン */
 @Composable

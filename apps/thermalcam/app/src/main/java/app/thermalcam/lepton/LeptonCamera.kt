@@ -27,6 +27,8 @@ enum class Gain(val cci: Int, val kelvinPerCount: Float, val resolutionCci: Int)
 sealed interface CameraCommand {
     data object RunFfc : CameraCommand
     data class SetGain(val gain: Gain) : CameraCommand
+    /** 放射率（0.01〜1.0）を Lepton 本体に書く（RAD_FLUX_LINEAR_PARAMS の sceneEmissivity） */
+    data class SetEmissivity(val emissivity: Float) : CameraCommand
 }
 
 enum class CameraProblem { NO_SERVICE, OPEN_FAILED, SETUP_FAILED, NO_FRAMES, IO_ERROR }
@@ -36,6 +38,10 @@ sealed interface CameraEvent {
     data class Running(val gain: Gain) : CameraEvent
     data class Frame(val frame: ThermalFrame) : CameraEvent
     data class Problem(val problem: CameraProblem, val detail: String = "") : CameraEvent
+    /** Lepton 本体のスポットメーターが測った温度（℃）と、測った範囲（センサーの画素、行・列の始めと終わり） */
+    data class SpotMeter(val celsius: Float, val roi: IntArray) : CameraEvent
+    /** Lepton 本体に書いてある放射率（読み戻した値） */
+    data class Emissivity(val emissivity: Float) : CameraEvent
 }
 
 /**
@@ -50,13 +56,20 @@ object LeptonCamera {
      */
     private val sessionLock = Mutex()
 
-    fun session(clientName: String, initialGain: Gain, commands: ReceiveChannel<CameraCommand>): Flow<CameraEvent> = flow {
+    /**
+     * spotRoi: スポットメーターで測る範囲（センサーの画素 [開始行, 開始列, 終了行, 終了列]）を返す。1 秒ごとに読んで測る
+     */
+    fun session(
+        clientName: String, initialGain: Gain, initialEmissivity: Float, commands: ReceiveChannel<CameraCommand>,
+        spotRoi: () -> IntArray?,
+    ): Flow<CameraEvent> = flow {
         emit(CameraEvent.Starting)
-        sessionLock.withLock { runSession(clientName, initialGain, commands) }
+        sessionLock.withLock { runSession(clientName, initialGain, initialEmissivity, commands, spotRoi) }
     }.flowOn(Dispatchers.IO)
 
     private suspend fun kotlinx.coroutines.flow.FlowCollector<CameraEvent>.runSession(
-        clientName: String, initialGain: Gain, commands: ReceiveChannel<CameraCommand>,
+        clientName: String, initialGain: Gain, initialEmissivity: Float, commands: ReceiveChannel<CameraCommand>,
+        spotRoi: () -> IntArray?,
     ) {
         val svc = LeptonService.connect()
         if (svc == null) {
@@ -83,6 +96,9 @@ object LeptonCamera {
                 emit(CameraEvent.Problem(CameraProblem.SETUP_FAILED, e.message ?: "")); return
             }
             emit(CameraEvent.Running(gain))
+            runCatching { emit(CameraEvent.Emissivity(setEmissivity(cci, initialEmissivity))) }
+                .onFailure { emit(CameraEvent.Problem(CameraProblem.IO_ERROR, "emissivity: ${it.message}")) }
+            var lastSpot = 0L
 
             var lastCounter = -1L
             var lastNew = System.currentTimeMillis()
@@ -96,6 +112,7 @@ object LeptonCamera {
                                 applyGain(cci, cmd.gain); gain = cmd.gain
                                 cci.run(Cci.SYS_RUN_FFC) // ゲインを変えたら校正し直す
                             }
+                            is CameraCommand.SetEmissivity -> emit(CameraEvent.Emissivity(setEmissivity(cci, cmd.emissivity)))
                         }
                     }.onSuccess { if (cmd is CameraCommand.SetGain) emit(CameraEvent.Running(gain)) }
                         .onFailure { emit(CameraEvent.Problem(CameraProblem.IO_ERROR, it.message ?: "")) }
@@ -117,6 +134,17 @@ object LeptonCamera {
                     0 -> delay(3)
                     else -> delay(20)
                 }
+                // 1 秒ごとに Lepton 本体のスポットメーターで点の周りを測る（アプリの計算と比べるため）
+                val now = System.currentTimeMillis()
+                val roi = spotRoi()
+                if (roi != null && now - lastSpot > 1000) {
+                    lastSpot = now
+                    runCatching {
+                        cci.set(Cci.RAD_SPOTMETER_ROI, roi)
+                        val k = cci.get(Cci.RAD_SPOTMETER_KELVIN, 4)[0]
+                        emit(CameraEvent.SpotMeter(k * gain.kelvinPerCount - 273.15f, roi))
+                    }
+                }
                 if (!warned && System.currentTimeMillis() - lastNew > 4000) {
                     warned = true
                     emit(CameraEvent.Problem(CameraProblem.NO_FRAMES))
@@ -125,6 +153,18 @@ object LeptonCamera {
         } finally {
             withContext(NonCancellable) { runCatching { svc.release() } }
         }
+    }
+
+    /**
+     * 放射率を書いて、読み戻した値を返す。RAD_FLUX_LINEAR_PARAMS は 8 ワード
+     * （sceneEmissivity, TBkgK, tauWindow, TWindowK, tauAtm, TAtmK, reflWindow, TReflK。LEPTON_RAD.h）。
+     * 放射率は 8192 = 1.0。他の 7 つは本体の値をそのまま残す（実機の既定: 放射率 1.0、背景 295.15K = 22℃）
+     */
+    private fun setEmissivity(cci: Cci, e: Float): Float {
+        val p = cci.get(Cci.RAD_FLUX_LINEAR_PARAMS, 8)
+        p[0] = (e.coerceIn(0.01f, 1f) * 8192).toInt().coerceIn(82, 8192)
+        cci.set(Cci.RAD_FLUX_LINEAR_PARAMS, p)
+        return cci.get(Cci.RAD_FLUX_LINEAR_PARAMS, 8)[0] / 8192f
     }
 
     private fun applyGain(cci: Cci, gain: Gain) {

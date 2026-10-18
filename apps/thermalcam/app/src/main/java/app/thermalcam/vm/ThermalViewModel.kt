@@ -14,6 +14,7 @@ import app.thermalcam.data.PhotoSaver
 import app.thermalcam.data.PhotoStore
 import app.thermalcam.data.Settings
 import app.thermalcam.data.SettingsStore
+import app.thermalcam.data.Smooth
 import app.thermalcam.lepton.CameraCommand
 import app.thermalcam.lepton.CameraEvent
 import app.thermalcam.lepton.CameraProblem
@@ -36,6 +37,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -48,6 +50,7 @@ enum class Phase { STOPPED, STARTING, RUNNING, PROBLEM }
 /** 1 回だけ見せる知らせ。文言は画面側で strings.xml から引く */
 sealed interface UiMessage {
     data class Saved(val where: String) : UiMessage
+    data class SavedImage(val where: String) : UiMessage   // 暗所カメラの写真（温度の CSV は無い）
     data object SaveFailed : UiMessage
     data object CameraPermissionDenied : UiMessage
     data object VisibleFailed : UiMessage
@@ -55,6 +58,7 @@ sealed interface UiMessage {
     data class AlignWeak(val score: Float) : UiMessage
     data object AlignNoVisible : UiMessage
     data object CaptureHint : UiMessage
+    data class ShotFailed(val reason: String) : UiMessage
     data class PresetSaved(val number: Int) : UiMessage
     data class PresetLoaded(val number: Int) : UiMessage
 }
@@ -80,6 +84,8 @@ data class ThermalUi(
     val autoAligning: Boolean = false,
     val proposalScore: Float? = null,    // 自動位置合わせの提案を見せている間の一致度（採用かやめるかを待つ）
     val presets: List<Settings?> = List(SettingsStore.PRESET_COUNT) { null },
+    val sensorSpot: Float? = null,       // Lepton 本体のスポットメーター（点の周り 3×3 画素）の温度
+    val emissivityActual: Float? = null, // Lepton 本体から読み戻した放射率
     val message: UiMessage? = null,
 )
 
@@ -150,15 +156,28 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- カメラの開始・停止（画面が見えている間だけ動かす。電池と、他のアプリがカメラを使えるように）----
 
+    /** 暗所カメラを使っている間は熱カメラを止めておく（画面が裏から戻っても動かさない） */
+    private var paused = false
+
+    fun setPaused(p: Boolean) {
+        paused = p
+        if (p) stop() else start()
+    }
+
     fun start() {
-        if (cameraJob?.isActive == true) return
+        if (paused || cameraJob?.isActive == true) return
         cameraJob = viewModelScope.launch(Dispatchers.Default) {
-            LeptonCamera.session(getApplication<Application>().packageName, _ui.value.settings.gain, commands).collect { e ->
+            // 保存した設定を読み終わってから開く（読む前に開くと、測定範囲などが既定値のままカメラに入る）
+            val s0 = store.settings.first()
+            smoothed = null
+            LeptonCamera.session(getApplication<Application>().packageName, s0.gain, s0.emissivity, commands, ::spotRoi).collect { e ->
                 when (e) {
                     CameraEvent.Starting -> _ui.update { it.copy(phase = Phase.STARTING, problem = null) }
                     is CameraEvent.Running -> _ui.update { it.copy(phase = Phase.RUNNING, problem = null) }
                     is CameraEvent.Problem -> _ui.update { it.copy(phase = Phase.PROBLEM, problem = e.problem, problemDetail = e.detail) }
                     is CameraEvent.Frame -> onFrame(e.frame)
+                    is CameraEvent.SpotMeter -> _ui.update { it.copy(sensorSpot = e.celsius) }
+                    is CameraEvent.Emissivity -> _ui.update { it.copy(emissivityActual = e.emissivity) }
                 }
             }
         }
@@ -174,9 +193,19 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
 
     fun retry() { stop(); start() }
 
-    private fun onFrame(f: ThermalFrame) {
-        lastFrame = f
+    /** ざらつき減らし: 前までの平均（℃）。測定範囲を変えたとき・止めたときは捨てる */
+    @Volatile private var smoothed: FloatArray? = null
+
+    private fun onFrame(raw: ThermalFrame) {
         val s = _ui.value.settings
+        val f = if (s.smooth == Smooth.OFF) raw.also { smoothed = null } else {
+            val prev = smoothed
+            val avg = if (prev == null || prev.size != raw.celsius.size) raw.celsius.copyOf()
+            else FloatArray(prev.size) { i -> prev[i] + (raw.celsius[i] - prev[i]) * s.smooth.weight }
+            smoothed = avg
+            ThermalFrame(avg, raw.frameCounter, raw.fpaC, raw.housingC, raw.statusBits)
+        }
+        lastFrame = f
         val st = Renderer.stats(f)
         val auto = autoRange(st) // 固定中も追い続ける（自動に戻したときに飛ばないように）
         val (lo, hi) = rangeLive ?: if (s.autoRange) auto else (s.rangeLo to s.rangeHi)
@@ -243,12 +272,29 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
         lastFrame?.let { f -> _ui.update { it.copy(spot = spotMarker(f)) } }
     }
 
+    /** スポットメーターで測る範囲: 点の画素を中心に 3×3（センサーの行・列。[開始行, 開始列, 終了行, 終了列]） */
+    private fun spotRoi(): IntArray? {
+        val (x, y) = nativePixel(spotPos.first, spotPos.second)
+        val c0 = (x - 1).coerceIn(0, ThermalFrame.WIDTH - 3); val r0 = (y - 1).coerceIn(0, ThermalFrame.HEIGHT - 3)
+        return intArrayOf(r0, c0, r0 + 2, c0 + 2)
+    }
+
+    fun setSmooth(v: Smooth) = viewModelScope.launch { smoothed = null; store.setSmooth(v) }
+
+    /** 放射率を変えて Lepton 本体に書く（0.05〜1.0） */
+    fun setEmissivity(e: Float) = viewModelScope.launch {
+        val v = e.coerceIn(0.05f, 1f)
+        store.setEmissivity(v)
+        commands.send(CameraCommand.SetEmissivity(v))
+    }
+
     fun setPalette(p: Palette) = viewModelScope.launch { store.setPalette(p) }
 
     fun setGain(g: Gain) = viewModelScope.launch {
         store.setGain(g)
         commands.send(CameraCommand.SetGain(g))
         autoLo = Float.NaN
+        smoothed = null
     }
 
     fun runFfc() { commands.trySend(CameraCommand.RunFfc) }
@@ -365,6 +411,8 @@ class ThermalViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update { it.copy(proposalScore = null, edgeShown = null) }
         store.setAll(p)
         if (gainChanged) { commands.send(CameraCommand.SetGain(p.gain)); autoLo = Float.NaN }
+        commands.send(CameraCommand.SetEmissivity(p.emissivity))
+        smoothed = null
         _ui.update { it.copy(alignShown = null, message = msg) }
     }
 

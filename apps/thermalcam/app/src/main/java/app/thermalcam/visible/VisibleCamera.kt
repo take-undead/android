@@ -45,6 +45,8 @@ object VisibleCamera {
         val thread = HandlerThread("visible").apply { start() }
         val handler = Handler(thread.looper)
         val reader = ImageReader.newInstance(WIDTH, HEIGHT, ImageFormat.YUV_420_888, 2)
+        CameraGate.awaitPreviousClosed()
+        val closedSignal = CameraGate.opening()
         var device: CameraDevice? = null
         var session: CameraCaptureSession? = null
         var lastCopy = 0L
@@ -87,11 +89,13 @@ object VisibleCamera {
             }
             override fun onDisconnected(d: CameraDevice) { d.close(); close() }
             override fun onError(d: CameraDevice, error: Int) { d.close(); close(IllegalStateException("camera error $error")) }
+            override fun onClosed(camera: CameraDevice) { closedSignal.complete(Unit) }
         }, handler)
 
         awaitClose {
             runCatching { session?.close() }
             runCatching { device?.close() }
+            if (device == null) closedSignal.complete(Unit)
             reader.close()
             thread.quitSafely()
         }

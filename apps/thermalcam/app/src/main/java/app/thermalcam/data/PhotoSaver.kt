@@ -44,6 +44,18 @@ object PhotoSaver {
             where
         }
 
+    /** 写真だけを保存する（暗所カメラ用。温度の CSV は無い） */
+    suspend fun saveImage(context: Context, baseName: String, image: Bitmap): String = withContext(Dispatchers.IO) {
+        write(context, "$baseName.jpg", "image/jpeg", Environment.DIRECTORY_PICTURES, MediaStore.Images.Media.EXTERNAL_CONTENT_URI) {
+            image.compress(Bitmap.CompressFormat.JPEG, 92, it)
+        }
+    }
+
+    /** カメラが作った JPEG をそのまま保存する（最高画質） */
+    suspend fun saveJpegBytes(context: Context, baseName: String, jpeg: ByteArray): String = withContext(Dispatchers.IO) {
+        write(context, "$baseName.jpg", "image/jpeg", Environment.DIRECTORY_PICTURES, MediaStore.Images.Media.EXTERNAL_CONTENT_URI) { it.write(jpeg) }
+    }
+
     private fun write(context: Context, name: String, mime: String, dirType: String, collection: Uri?, body: (OutputStream) -> Unit): String {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && collection != null) {
             val values = ContentValues().apply {

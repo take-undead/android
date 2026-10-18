@@ -13,7 +13,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.runtime.DisposableEffect
 import app.thermalcam.ui.MainScreen
+import app.thermalcam.ui.NightScreen
+import app.thermalcam.vm.NightViewModel
 import app.thermalcam.ui.PhotoViewerScreen
 import app.thermalcam.ui.PhotosScreen
 import app.thermalcam.vm.PhotosViewModel
@@ -23,6 +26,7 @@ import app.thermalcam.vm.ThermalViewModel
 class MainActivity : ComponentActivity() {
     private val vm: ThermalViewModel by viewModels()
     private val photos: PhotosViewModel by viewModels()
+    private val night: NightViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,8 +36,16 @@ class MainActivity : ComponentActivity() {
             ThermalTheme {
                 // 画面: カメラ → 写真の一覧 → 写真の表示（CLAUDE.md G4）。写真を見ている間もカメラは動かしたまま（戻ったときに待たない）
                 val nav = rememberNavController()
+                val degrees = screenDegrees()
                 NavHost(nav, startDestination = "camera") {
-                    composable("camera") { MainScreen(vm, onOpenPhotos = { nav.navigate("photos") }) }
+                    composable("camera") {
+                        MainScreen(vm, onOpenPhotos = { nav.navigate("photos") }, onOpenNight = { nav.navigate("night") })
+                    }
+                    composable("night") {
+                        // 暗所カメラの間は熱カメラを止める（カメラの取り合いと電池のため）。戻ったら動かす
+                        DisposableEffect(Unit) { vm.setPaused(true); onDispose { vm.setPaused(false) } }
+                        NightScreen(night, degrees, onThermal = { nav.popBackStack() })
+                    }
                     composable("photos") {
                         PhotosScreen(photos, onBack = { nav.popBackStack() }, onOpen = { i -> nav.navigate("photo/$i") })
                     }
