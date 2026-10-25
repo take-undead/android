@@ -456,6 +456,17 @@ PowerShell で確認した事実:
 
 ## 作業記録
 
+- 2026-10-25 20:06: 上の変更を MP01 に入れ、実機で確認(M1 の過去の足と `◀ドラッグで過去`、H1 の 8 日分と日付の札 `10/22`〜`10/24`、
+  横ドラッグで `10/20 22:00〜10/23 01:00` の範囲表示と「最新へ」の札で戻ること)。adb の `input tap` 2 回はダブルタップと判定されず、**ダブルタップは指で未確認**。
+  720px 幅では「最新へ」の札が右端で少し切れる(列は横に送れるので押せる)。
+  入れるまでの手順(この PC では初めて): (1) MP01 は `Unisoc Phone`(VID 18D1 PID 4EE8)のままドライバ無しで adb に出ない →
+  `sdkmanager "extras;google;usb_driver"` で Google USB Driver を取り、管理者権限で `pnputil /add-driver android_winusb.inf /install`(UAC は利用者が許可)→ `ADB Interface` になった。
+  (2) **debug の署名鍵が PC ごとに違う**ため `INSTALL_FAILED_UPDATE_INCOMPATIBLE`。アンインストールが要るが鍵(config)が消えるので、
+  先に debug ビルドの `run-as app.mt5mon` で `files/datastore/mt5mon.preferences_pb` を取り出し、protobuf から `config_text` を復元
+  (10.8.0.3 の PicoCalc の鍵。この PC には `build\mt5mon\config.txt` が無い。`m5_stack_cardputer_adv/secrets/` のは 10.8.0.4 で別のピア)。
+  アンインストール → 新 APK → `Download/mt5mon_config.txt` に置いて `am start -a VIEW -d content://media/external/file/<id>` で渡し、VPN 許可を OK → LIVE(週末なので STALE)。
+  渡した後に端末の Download と PC の写しは消した。チャイムなどの設定は既定に戻っている(alert 15p/5 分は config から入る)。
+  MP01 は PicoCalc と同じピアなので、**つないでいる間は自宅の PicoCalc の接続を奪う**(以前と同じ)。
 - 2026-10-25 19:50: mt5mon を PicoCalc の 776ae75(チャート拡充)に追従。時間足に M30・H1、どの時間足でも `/bars.json` を 400 本取る
   (`Parsers.HIST_BARS`。応答の tf が違えば捨てる)、足の幅に 1 を追加(3→4→2→1)、時刻の目盛りに日付の変わり目(枠線色の縦線と白い `10/24`。
   M30 は 3 時間、H1 は 6 時間ごと)。過去へ送る操作は Android に合わせ、PicoCalc の ←→/Home/End ではなく **チャートを横にドラッグ**(1 本ぶんで 1 本)・
