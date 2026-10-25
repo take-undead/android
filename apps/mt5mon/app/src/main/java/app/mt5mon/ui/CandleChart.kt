@@ -3,28 +3,38 @@ package app.mt5mon.ui
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.mt5mon.R
 import app.mt5mon.data.AlertHit
 import app.mt5mon.data.Bar
 import app.mt5mon.data.Hist
 import app.mt5mon.data.Status
 import app.mt5mon.ui.theme.Mt5Colors
+import java.time.LocalDate
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 
 /**
  * ローソク足（PicoCalc の ui.c の draw_chart と同じ描き方）。
  * 上げ = 赤、下げ = 水色。黄の点線が今の bid。赤・水色の点線が建値。紫がキリ値（1 円は実線、50 銭は点線）。
+ * 横にドラッグすると過去へ（PicoCalc の ←→）。ダブルタップで最新に戻る（End）。
  */
 object ChartData {
     /** M1（確定足＋形成中の足）を tf 分足にまとめる。最初の足が時間足の頭から始まっていなければ捨てる */
@@ -46,11 +56,11 @@ object ChartData {
         return out
     }
 
-    /** 表示する足: VPS が貯めた古い足（hist）のうち M1 から作った足より前のもの + M1 から作った足 */
+    /** 表示する足: VPS が貯めた古い足（hist）のうち M1 から作った足より前のもの + M1 から作った足（どの時間足でも） */
     fun buildBars(st: Status, tf: Int, hist: Hist?): List<Bar> {
         val local = buildFromM1(st, tf)
         val out = ArrayList<Bar>()
-        if (tf > 1 && hist != null && hist.tf == tf) {
+        if (hist != null && hist.tf == tf) {
             val limit = local.firstOrNull()?.min ?: Long.MAX_VALUE
             for (b in hist.bars) {
                 if (b.min >= limit) break
@@ -67,6 +77,35 @@ object ChartData {
         for (s in steps) if (range / s <= 6) return s
         return 1000.0
     }
+
+    /** 時刻の札の間隔（分）: M1・M5 は 30 分、M15 は 1 時間、M30 は 3 時間、H1 は 6 時間 */
+    fun labelStep(tf: Int): Int = if (tf >= 60) 360 else if (tf >= 30) 180 else if (tf >= 15) 60 else 30
+
+    /** 時間足の名前（M1〜M30、H1） */
+    fun tfName(tf: Int): String = if (tf >= 60) "H${tf / 60}" else "M$tf"
+
+    /** 通しの分 → "MM/DD"（1970-01-01 からの日数を日付に） */
+    fun fmtDate(min: Long): String {
+        val d = LocalDate.ofEpochDay(min / 1440)
+        return String.format(Locale.US, "%02d/%02d", d.monthValue, d.dayOfMonth)
+    }
+
+    /** 通しの分 → "MM/DD HH:MM"（withDate が偽なら "HH:MM"） */
+    fun fmtMin(min: Long, withDate: Boolean): String {
+        val hm = (min % 1440).toInt()
+        val t = String.format(Locale.US, "%02d:%02d", hm / 60, hm % 60)
+        return if (withDate) "${fmtDate(min)} $t" else t
+    }
+
+    /** 過去へ送れる上限（右端から隠せる本数） */
+    fun maxScroll(total: Int, vis: Int): Int = (total - vis).coerceAtLeast(0)
+}
+
+/** 直近に描いたときの寸法（ドラッグの量を足の本数に直すため。描くたびに更新） */
+private class ChartGeom {
+    var bw = 0f      // 1 本の幅（px）
+    var vis = 0      // 見えている本数
+    var total = 0    // 全部の本数
 }
 
 @Composable
@@ -74,7 +113,9 @@ fun CandleChart(
     st: Status,
     tf: Int,
     hist: Hist?,
-    barWidthPx: Int,          // PicoCalc の px（2・3・4）。dp に 2 倍して使う
+    barWidthPx: Int,          // PicoCalc の px（1〜4）。dp に 2 倍して使う
+    scroll: Int,              // 右端から隠している足の本数（0 = 最新を表示）
+    onScroll: (Int) -> Unit,
     alert: AlertHit?,
     nowMillis: Long,
     histErr: String,
@@ -87,8 +128,29 @@ fun CandleChart(
     val smallPx = with(density) { 10.sp.toPx() }
     val bars = ChartData.buildBars(st, tf, hist)
     val labelFontColor = Mt5Colors.dim.toArgb()
+    val hintPast = stringResource(R.string.chart_hint_past)
+    val hintNow = stringResource(R.string.chart_hint_now)
+    val geom = remember { ChartGeom() }
+    val scrollNow = rememberUpdatedState(scroll)
 
-    Canvas(modifier) {
+    val gestures = modifier
+        .pointerInput(Unit) {
+            // 横のドラッグで過去へ（右へ引くと過去、左へ引くと今へ）。1 本ぶん動いたら 1 本送る
+            var acc = 0f
+            detectHorizontalDragGestures(onDragStart = { acc = 0f }) { change, dx ->
+                change.consume()
+                if (geom.bw <= 0f) return@detectHorizontalDragGestures
+                acc += dx
+                val n = (acc / geom.bw).toInt()
+                if (n != 0) {
+                    acc -= n * geom.bw
+                    onScroll((scrollNow.value + n).coerceIn(0, ChartData.maxScroll(geom.total, geom.vis)))
+                }
+            }
+        }
+        .pointerInput(Unit) { detectTapGestures(onDoubleTap = { onScroll(0) }) }
+
+    Canvas(gestures) {
         val scaleW = with(density) { 48.dp.toPx() }      // 右の価格目盛り
         val timeH = with(density) { 14.dp.toPx() }       // 下の時刻
         val chartW = size.width - scaleW
@@ -97,26 +159,34 @@ fun CandleChart(
         val paint = Paint().apply { isAntiAlias = true; textSize = textPx; typeface = Typeface.MONOSPACE }
 
         if (bars.isEmpty()) {
+            geom.bw = 0f
             paint.color = labelFontColor
             drawContext.canvas.nativeCanvas.drawText("—", chartW / 2, chartH / 2, paint)
             return@Canvas
         }
-        // 足の幅
+        // 足の幅。本数が少なければ範囲いっぱいに広げる（最大 24dp。PicoCalc の 12px）
         var bw = with(density) { (barWidthPx * 2).dp.toPx() }
-        if (tf > 1) {
+        run {
             val w = candleW / bars.size
             val maxW = with(density) { 24.dp.toPx() }
             bw = maxOf(bw, minOf(w, maxW))
         }
-        val vis = minOf(bars.size, (candleW / bw).toInt().coerceAtLeast(1))
-        val first = bars.size - vis
+        val total = bars.size
+        val vis = minOf(total, (candleW / bw).toInt().coerceAtLeast(1))
+        // ドラッグで過去へ送った分（右端から隠す本数）。足が減っていたら収める
+        val sc = scroll.coerceIn(0, ChartData.maxScroll(total, vis))
+        val last = total - sc // 表示する最後の足の次
+        val first = last - vis
+        geom.bw = bw
+        geom.vis = vis
+        geom.total = total
         var hi = -1e30f
         var lo = 1e30f
-        for (i in first until bars.size) {
+        for (i in first until last) {
             if (bars[i].h > hi) hi = bars[i].h
             if (bars[i].l < lo) lo = bars[i].l
         }
-        if (st.bid > 0) {
+        if (st.bid > 0 && sc == 0) { // 過去を見ているときは今の値で範囲を広げない
             if (st.bid > hi) hi = st.bid.toFloat()
             if (st.bid < lo) lo = st.bid.toFloat()
         }
@@ -140,22 +210,27 @@ fun CandleChart(
             drawContext.canvas.nativeCanvas.drawText(String.format(Locale.US, if (v >= 1000) "%.0f" else "%.2f", v), chartW + 4f, y + textPx / 3, paint)
             v += step
         }
-        // 時刻の目盛り（M1・M5 は 30 分ごと、M15 は 1 時間ごと）
-        val labelStep = if (tf >= 15) 60 else 30
-        var lastLabelX = -1000f
+        // 時刻の目盛り（M1・M5 は 30 分、M15 は 1 時間、M30 は 3 時間、H1 は 6 時間ごと）。
+        // 日付の変わり目（0 時と、週末などで日が飛んだ所）は枠線の色の線と白い日付（10/24）で、時刻の札より優先して出す（札どうしは 5 字ぶんあける）
+        val labelStep = ChartData.labelStep(tf)
+        val labelX = ArrayList<Float>()
+        val minGap = smallPx * 5
         paint.textSize = smallPx
-        for (i in first until bars.size) {
-            val m = (bars[i].min % 1440).toInt()
-            if (m % labelStep != 0) continue
-            val x = (i - first) * bw + bw / 2
-            drawLine(Mt5Colors.grid, Offset(x, 0f), Offset(x, chartH))
-            if (x - lastLabelX >= smallPx * 5 && x + smallPx * 2 <= chartW) {
-                val s = String.format(Locale.US, "%02d:%02d", m / 60, m % 60)
-                paint.color = labelFontColor
+        for (pass in 0..1) {
+            for (i in first until last) {
+                val m = (bars[i].min % 1440).toInt()
+                val day = m == 0 || (i > first && bars[i].min / 1440 != bars[i - 1].min / 1440)
+                if (if (pass == 0) !day else (day || m % labelStep != 0)) continue
+                val x = (i - first) * bw + bw / 2
+                drawLine(if (day) Mt5Colors.frame else Mt5Colors.grid, Offset(x, 0f), Offset(x, chartH))
+                if (x - smallPx * 2 < 0 || x + smallPx * 2 > chartW) continue
+                if (labelX.any { abs(x - it) < minGap }) continue
+                val s = if (day) ChartData.fmtDate(bars[i].min) else String.format(Locale.US, "%02d:%02d", m / 60, m % 60)
+                paint.color = if (day) Mt5Colors.text.toArgb() else labelFontColor
                 paint.textAlign = Paint.Align.CENTER
                 drawContext.canvas.nativeCanvas.drawText(s, x, size.height - 2f, paint)
                 paint.textAlign = Paint.Align.LEFT
-                lastLabelX = x
+                labelX.add(x)
             }
         }
         // キリ値: 1 円ごとに実線、50 銭に点線。左端に値
@@ -196,7 +271,7 @@ fun CandleChart(
         // ローソク（上げ = 赤、下げ = 水色）
         val gap = if (bw >= 12f) 4f else 2f
         val bodyW = if (bw > gap) bw - gap else 1f
-        for (i in first until bars.size) {
+        for (i in first until last) {
             val b = bars[i]
             val col = if (b.c >= b.o) Mt5Colors.up else Mt5Colors.down
             val x = (i - first) * bw
@@ -208,16 +283,29 @@ fun CandleChart(
             val bot = maxOf(yo, yc)
             drawRect(col, Offset(x, top), Size(bodyW, maxOf(bot - top, 1.5f)))
         }
-        // 時間足の名前とチャイムの設定（左上）
+        // 時間足の名前（左上）とチャイムの設定。古い足が VPS から取れていなければ理由も。
+        // 過去へ送っているときは、代わりに見えている範囲の時刻と戻り方
         paint.textSize = textPx
         paint.color = Mt5Colors.sym.toArgb()
-        val tfLabel = "M$tf"
+        val tfLabel = ChartData.tfName(tf)
         drawContext.canvas.nativeCanvas.drawText(tfLabel, 2f, textPx * 2.4f, paint)
-        paint.color = labelFontColor
-        val tfW = paint.measureText(tfLabel)
-        var extra = " $alertLabel"
-        if (tf > 1 && (hist == null || hist.tf != tf)) extra += if (histErr.isNotEmpty()) "  過去の足: $histErr" else if (histLoading) "  過去の足: 取得中" else ""
-        drawContext.canvas.nativeCanvas.drawText(extra, 2f + tfW, textPx * 2.4f, paint)
+        var x = 2f + paint.measureText(tfLabel)
+        if (sc > 0) {
+            val m0 = bars[first].min
+            val m1 = bars[last - 1].min
+            val range = " ${ChartData.fmtMin(m0, true)}〜${ChartData.fmtMin(m1, m1 / 1440 != m0 / 1440)}"
+            paint.color = Mt5Colors.text.toArgb()
+            drawContext.canvas.nativeCanvas.drawText(range, x, textPx * 2.4f, paint)
+            x += paint.measureText(range)
+            paint.color = labelFontColor
+            drawContext.canvas.nativeCanvas.drawText(" $hintNow", x, textPx * 2.4f, paint)
+        } else {
+            paint.color = labelFontColor
+            var extra = " $alertLabel"
+            if (hist != null && hist.tf == tf && total > vis) extra += " $hintPast"
+            if (hist == null || hist.tf != tf) extra += if (histErr.isNotEmpty()) "  過去の足: $histErr" else if (histLoading) "  過去の足: 取得中" else ""
+            drawContext.canvas.nativeCanvas.drawText(extra, x, textPx * 2.4f, paint)
+        }
         // 急な値動きを知らせてから 30 秒は帯で出す
         if (alert != null && alert.dir != 0 && nowMillis - alert.atMillis < 30_000) {
             val s = String.format(Locale.US, " %s %+.1fpips ♪x%d ", if (alert.dir > 0) "急騰" else "急落", alert.pips, alert.reps)
@@ -241,4 +329,3 @@ fun CandleChart(
         }
     }
 }
-

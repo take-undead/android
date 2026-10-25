@@ -45,7 +45,7 @@ data class MainUi(
     val fetching: Boolean = false,
     val okCount: Int = 0,
     val failCount: Int = 0,
-    val hist: Hist? = null,
+    val hist: Hist? = null,            // 古い足（VPS の /bars.json。直近 2 時間は status の M1 からまとめた足で上書き）
     val histErr: String = "",
     val alert: AlertHit? = null,       // 最後に知らせた急な値動き
     val notice: Notice? = null,
@@ -243,20 +243,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---- M5・M15 の古い足（/bars.json） ---------------------------------------------
+    // ---- 古い足（/bars.json）。どの時間足でも、時間足を変えたときと 30 秒ごとに取る ------------------------
 
     private suspend fun histLoop() {
         while (true) {
             val s = _ui.value
             val tfMin = tfMinutes(s.prefs.tf)
-            if (tfMin > 1 && s.config != null && s.tunnel.up) {
-                val r = api.get("bars.json?tf=$tfMin&n=140")
+            if (s.config != null && s.tunnel.up) {
+                val r = api.get("bars.json?tf=$tfMin&n=${Parsers.HIST_BARS}")
                 val body = r.okBody
                 if (body == null) {
                     _ui.update { it.copy(histErr = fetchErrText(r)) }
                 } else {
                     try {
-                        _ui.update { it.copy(hist = Parsers.hist(body), histErr = "") }
+                        _ui.update { it.copy(hist = Parsers.hist(body, tfMin), histErr = "") }
                     } catch (e: ParseError) {
                         _ui.update { it.copy(histErr = e.message ?: "") }
                     }
@@ -312,7 +312,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private val fmtDot = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss")
         val JST: ZoneId = ZoneId.of("Asia/Tokyo")
 
-        fun tfMinutes(tf: Int) = when (tf) { 1 -> 5; 2 -> 15; else -> 1 }
+        /** 時間足の番号 → 分（0 = M1、1 = M5、2 = M15、3 = M30、4 = H1） */
+        val TF_MINUTES = intArrayOf(1, 5, 15, 30, 60)
+        val TF_NAMES = arrayOf("M1", "M5", "M15", "M30", "H1")
+        fun tfMinutes(tf: Int) = TF_MINUTES.getOrElse(tf) { 1 }
 
         /** "YYYY-MM-DD HH:MM:SS"（JST）→ 1970 からの秒（JST のまま）。読めなければ 0 */
         fun parseJst(s: String): Long = try {

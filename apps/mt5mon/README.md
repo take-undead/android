@@ -7,7 +7,7 @@ PicoCalc の `apps/net/mt5mon`（MT5 状況モニター）と `apps/net/vpschat`
 
 | 画面 | 内容 | 元のアプリ |
 |---|---|---|
-| モニター | USDJPY のローソク足（M1 / M5 / M15）、建玉・EA、口座、急な値動きのチャイム | mt5mon |
+| モニター | USDJPY のローソク足（M1 / M5 / M15 / M30 / H1。横にドラッグで過去へ、ダブルタップで最新）、建玉・EA、口座、急な値動きのチャイム | mt5mon |
 | 日報 | Claude 監督の判断の要約（/sup.json）と日報の全文（/nippo.md） | mt5mon の N |
 | 攻撃 | fail2ban の記録（上位・永久・記録・国別）、永久ブロック・解除（確かめてから送る） | mt5mon の B |
 | チャット | VPS の Claude と話す（日本語入力は Android の IME） | vpschat |

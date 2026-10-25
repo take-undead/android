@@ -129,12 +129,17 @@ object Parsers {
         )
     }
 
-    fun hist(body: String): Hist {
+    /** /bars.json。tf が wantTf でなければ（別の時間足の応答）捨てる（PicoCalc の hist_parse と同じ） */
+    fun hist(body: String, wantTf: Int): Hist {
         val j = root(body, "bars の JSON")
         val tf = j.optInt("tf", 0)
         if (tf <= 0 || jstAbsMinutes(j.str("t0_jst")) < 0) throw ParseError("bars の形が違う")
-        return Hist(tf, bars(j, 160))
+        if (tf != wantTf) throw ParseError("bars の時間足が違う（M$tf）")
+        return Hist(tf, bars(j, HIST_BARS))
     }
+
+    /** VPS に頼む過去の足の本数（M1 で約 6.5 時間、M5 で 33 時間、M15 で 4 日、M30・H1 は VPS が持つ 8 日分すべて） */
+    const val HIST_BARS = 400
 
     fun sup(body: String): Sup {
         val j = root(body, "sup.json")

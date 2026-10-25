@@ -21,8 +21,8 @@ data class Prefs(
     val alertMinutes: Int = 5,
     val alertVolume: Int = 7,          // 1〜10（1 段 3dB）
     val noticeSeconds: Int = 20,       // 知らせのポップアップを自動で閉じる秒（0 = 閉じない）
-    val tf: Int = 0,                   // 0 = M1、1 = M5、2 = M15
-    val barWidth: Int = 3,             // M1 のローソクの幅（PicoCalc の px。画面では dp に換算）
+    val tf: Int = 0,                   // 0 = M1、1 = M5、2 = M15、3 = M30、4 = H1
+    val barWidth: Int = 3,             // ローソクの幅（PicoCalc の px。1〜4。画面では dp に換算）
     val autoVpn: Boolean = true,       // 起動時に VPN を自動でつなぐ
 )
 
@@ -65,7 +65,7 @@ class ConfigStore(private val context: Context) {
         it[K.alertVolume] = volume.coerceIn(1, 10)
     }
     suspend fun setNoticeSeconds(sec: Int) = context.dataStore.edit { it[K.noticeSeconds] = sec.coerceIn(0, 300) }
-    suspend fun setTf(tf: Int) = context.dataStore.edit { it[K.tf] = tf.coerceIn(0, 2) }
-    suspend fun setBarWidth(w: Int) = context.dataStore.edit { it[K.barWidth] = w.coerceIn(2, 4) }
+    suspend fun setTf(tf: Int) = context.dataStore.edit { it[K.tf] = tf.coerceIn(0, 4) }
+    suspend fun setBarWidth(w: Int) = context.dataStore.edit { it[K.barWidth] = w.coerceIn(1, 4) }
     suspend fun setAutoVpn(on: Boolean) = context.dataStore.edit { it[K.autoVpn] = on }
 }

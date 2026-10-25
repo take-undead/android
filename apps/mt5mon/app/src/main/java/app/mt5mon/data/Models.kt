@@ -44,7 +44,7 @@ data class Ea(val name: String, val alive: Boolean)
 /** ローソク足 1 本。min は 1970-01-01 0:00 からの通しの分（JST のまま。% 1440 で 0 時からの分） */
 data class Bar(val o: Float, val h: Float, val l: Float, val c: Float, val min: Long)
 
-/** /bars.json?tf=&n=（VPS が貯めた M1 をまとめた足） */
+/** /bars.json?tf=&n=（VPS が貯めた M1 をまとめた足。どの時間足でも Parsers.HIST_BARS 本） */
 data class Hist(val tf: Int, val bars: List<Bar>)
 
 /** /sup.json（Claude 監督の判断・EA_One の状態） */

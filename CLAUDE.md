@@ -224,7 +224,7 @@ PowerShell で確認した事実:
 - 元のソース: `D:\github\picoclac\apps\net\mt5mon\`(C、Pico 2 W)と `apps\net\vpschat\`(通信部分は mt5mon を共用)。
 - VPS 側の正のソース: `D:\github\vscode-\MT5\claude_ea\tools\vps\`(status_server.py・attack.py・chat.py)。**VPS 側は変えない。**
 - 通信: Wi-Fi → WireGuard(VPS の 51820/udp)→ HTTP/1.0 の平文で `http://10.8.0.1:8080/…`(WireGuard の内側でだけ届く)。
-  読む口: `/status.json`(5 秒ごと)・`/bars.json?tf=&n=`(M5/M15、30 秒ごと)・`/sup.json`(60 秒)・`/nippo.md`(5 分)・
+  読む口: `/status.json`(5 秒ごと)・`/bars.json?tf=&n=`(M1〜H1 の全時間足で n=400、時間足を変えたときと 30 秒ごと。2026-10-25 に M5/M15 の 140 本から変更)・`/sup.json`(60 秒)・`/nippo.md`(5 分)・
   `/f2b.json`・`/stats.json`(30 秒)・`/notice.json`(30 秒・どの画面でも)・`/chat.json?since=N`(考え中 3 秒・普段 15 秒)。
   送る口: `POST /ban?ip=`・`/unban?ip=`・`/stats_refresh`・`/chat`(本文 2000 バイトまで)・`/chat_new`。応答は `{"ok":…,"msg":…}`。
 - JSON の形は picoclac の `status.c`・`attack.c`・`nippo.c`・`notice.c`・vpschat の `main.c` の読み方をそのまま Kotlin に写した(`data/Parsers.kt`)。
@@ -456,6 +456,15 @@ PowerShell で確認した事実:
 
 ## 作業記録
 
+- 2026-10-25 19:50: mt5mon を PicoCalc の 776ae75(チャート拡充)に追従。時間足に M30・H1、どの時間足でも `/bars.json` を 400 本取る
+  (`Parsers.HIST_BARS`。応答の tf が違えば捨てる)、足の幅に 1 を追加(3→4→2→1)、時刻の目盛りに日付の変わり目(枠線色の縦線と白い `10/24`。
+  M30 は 3 時間、H1 は 6 時間ごと)。過去へ送る操作は Android に合わせ、PicoCalc の ←→/Home/End ではなく **チャートを横にドラッグ**(1 本ぶんで 1 本)・
+  **ダブルタップで最新**・時間足の列の「最新へ」の札にした。過去を見ている間は左上に見えている範囲の時刻(`10/24 15:30〜18:45`)、今の値で縦の範囲を広げない。
+  時間足の列は横に送れる Row にした(5 つの時間足 + 幅 + 最新へ が狭い端末で収まらないため)。
+  この PC(gme10)は JDK 17・SDK が無かったので別 PC と同じ手順で入れた(`C:\Users\gme10\.jdks\jdk-17`、`C:\Users\gme10\AppData\Local\Android\Sdk`。
+  platform-tools 37.0.1、platforms android-36・android-37.0、build-tools 36.0.0)。**リポジトリの場所 `D:\github\vscode用\android` に日本語が入るため
+  AGP がビルドを止める** → `-Pandroid.overridePathCheck=true` を付けて通した(Lint 10 件の警告は変更したファイルには無し。APK 25.9MB)。
+  実機は未接続のため APK 未反映(次に USB でつないだら入れる)。
 - 2026-10-19 00:02: thermalcam の重ね合わせの土台をサブ(ID 2)/メイン(ID 0)から選べるようにした（利用者「メインカメラに合わせるのは？」）。
   画角は dumpsys の焦点距離とセンサー幅から計算（メイン 62.2°、初期倍率 0.773）。位置合わせはカメラごとに別のキーに保存、記憶は v4（v1〜v3 も読む）。
   実機で切り替えと重なりを確認。試験後の状態は「カラー土台 + メイン」のまま（利用者が気に入っていたため戻していない）。Lint エラー 0。GitHub 未 push。

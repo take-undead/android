@@ -53,6 +53,9 @@
     <string name="bar_width">幅 %1$d</string>
     <string name="chart_alert_on">♪%1$dp/%2$d分</string>
     <string name="chart_alert_off">♪オフ</string>
+    <string name="chart_hint_past">◀ドラッグで過去</string>
+    <string name="chart_hint_now">ダブルタップで今</string>
+    <string name="chart_to_now">最新へ</string>
     <string name="acc_balance">残高%1$s 有効%2$s</string>
     <string name="acc_profit">損益</string>
     <string name="acc_margin">証拠金率 %1$s</string>

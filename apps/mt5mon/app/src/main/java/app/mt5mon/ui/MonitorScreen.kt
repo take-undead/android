@@ -1,6 +1,7 @@
 package app.mt5mon.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -99,20 +101,25 @@ fun MonitorScreen(vm: MainViewModel, onOpenSettings: () -> Unit) {
         if (prob.isNotEmpty()) {
             Text(prob, color = badge.color, modifier = Modifier.fillMaxWidth().background(Color(0xFF280000)).padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.bodySmall)
         }
-        // 時間足と足の幅
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf("M1", "M5", "M15").forEachIndexed { i, label ->
+        // チャートを過去へ送った本数（右端から隠す本数。0 = 最新）。時間足を変えたら最新に戻す（PicoCalc の T と同じ）
+        var scroll by rememberSaveable { mutableIntStateOf(0) }
+        LaunchedEffect(ui.prefs.tf) { scroll = 0 }
+        // 時間足と足の幅（横に収まらない幅の端末では横に送れる）
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            MainViewModel.TF_NAMES.forEachIndexed { i, label ->
                 FilterChip(selected = ui.prefs.tf == i, onClick = { vm.setTf(i) }, label = { Text(label) }, modifier = Modifier.padding(end = 6.dp))
             }
-            Spacer(Modifier.weight(1f))
-            if (ui.prefs.tf == 0) {
-                val next = when (ui.prefs.barWidth) { 3 -> 4; 4 -> 2; else -> 3 }
-                FilterChip(selected = false, onClick = { vm.setBarWidth(next) }, label = { Text(stringResource(R.string.bar_width, ui.prefs.barWidth)) })
+            // 3 → 4 → 2 → 1 → 3（PicoCalc の Z と同じ。1 は一番多くの足を一度に見る）
+            val next = when (ui.prefs.barWidth) { 3 -> 4; 4 -> 2; 2 -> 1; else -> 3 }
+            FilterChip(selected = false, onClick = { vm.setBarWidth(next) }, label = { Text(stringResource(R.string.bar_width, ui.prefs.barWidth)) }, modifier = Modifier.padding(end = 6.dp))
+            if (scroll > 0) {
+                FilterChip(selected = true, onClick = { scroll = 0 }, label = { Text(stringResource(R.string.chart_to_now)) })
             }
         }
         val alertLabel = if (ui.prefs.alertOn) stringResource(R.string.chart_alert_on, ui.prefs.alertPips, ui.prefs.alertMinutes) else stringResource(R.string.chart_alert_off)
         CandleChart(
             st = st, tf = MainViewModel.tfMinutes(ui.prefs.tf), hist = ui.hist, barWidthPx = ui.prefs.barWidth,
+            scroll = scroll, onScroll = { scroll = it },
             alert = ui.alert, nowMillis = ui.nowMillis, histErr = ui.histErr, histLoading = ui.hist == null, alertLabel = alertLabel,
             modifier = Modifier.fillMaxWidth().height(260.dp),
         )
