@@ -285,6 +285,8 @@ PowerShell で確認した事実:
 
 ### 2 台目: MECHEN H1(Android 6.0・API 23・armeabi-v7a・480×800)への対応(2026-10-14 13:00)
 
+- **H1 はスマホではなく音楽プレイヤー**(利用者の訂正 2026-10-26)。利用者のスマホは BL8800Pro と MP01。
+
 - そのままでは `INSTALL_FAILED_OLDER_SDK`。**minSdk を 26 → 23 に下げた**(G8 の例外。利用者がこの端末で使いたいと言ったため。警告は出した)。
 - 下げるために変えたもの(いずれも AAR の manifest の minSdkVersion を実際に読んで確認):
   - `com.wireguard.android:tunnel` 1.0.20260102(minSdk 24)→ **1.0.20230706**(minSdk 21、armeabi-v7a 入り)。公開 API(GoBackend・Statistics・PeerStats の record・Config の Builder)は同じ(javap で確認)。
