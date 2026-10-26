@@ -286,6 +286,20 @@ PowerShell で確認した事実:
 ### 2 台目: MECHEN H1(Android 6.0・API 23・armeabi-v7a・480×800)への対応(2026-10-14 13:00)
 
 - **H1 はスマホではなく音楽プレイヤー**(利用者の訂正 2026-10-26)。利用者のスマホは BL8800Pro と MP01。
+- スマホ 2 台を adb で読んだ値(2026-10-26、読むだけ):
+
+  | 項目 | BL8800Pro(serial BL8800PEEA0000818) | MP01(UMIDIGI、serial A11S46406Q2041401381) |
+  |---|---|---|
+  | SoC | MediaTek MT6833(一般に Dimensity 700)・8 コア | Unisoc ums312(一般に T310)・4 コア |
+  | メモリ | 7,877,428 kB(約 8GB) | 3,881,792 kB(約 4GB) |
+  | /data | 112G(空き 93G) | 53G(空き 43G) |
+  | 画面 | 1080×2408・480dpi | 720×1600・320dpi(表示は 272 に変更) |
+  | セキュリティパッチ | 2022-10-05 | 2021-08-05 |
+  | 音声入力 | Google の音声認識(`GoogleRecognitionService`)・Gboard | 同じ |
+  | 読み上げ | Google 音声認識と合成(`com.google.android.tts`、2026-09-14 版。既定) | 同じ(読み上げはこれだけ。`tts_default_synth` は null) |
+  | Chrome | 155.0.8059.87 | 同じ |
+  | 言語 | ja-JP | ja-JP |
+  - 型番の読み替え(Dimensity 700・T310)は一般の知識で、端末からは型番しか読めない。日本語の声が実際に鳴るかは未確認。
 
 - そのままでは `INSTALL_FAILED_OLDER_SDK`。**minSdk を 26 → 23 に下げた**(G8 の例外。利用者がこの端末で使いたいと言ったため。警告は出した)。
 - 下げるために変えたもの(いずれも AAR の manifest の minSdkVersion を実際に読んで確認):
