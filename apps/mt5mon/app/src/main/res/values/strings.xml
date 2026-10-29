@@ -101,6 +101,7 @@
     <string name="attack_act_unban">解除</string>
     <string name="attack_act_inc">延長</string>
     <string name="attack_act_restore">復元</string>
+    <string name="attack_act_drop">破棄</string>
     <string name="attack_ban">永久ブロック</string>
     <string name="attack_unban">解除</string>
     <string name="attack_sort_fails">▼失敗回数</string>

@@ -147,6 +147,7 @@ private fun AttackList(ui: AttackUi, vm: AttackViewModel) {
                     "unban" -> stringResource(R.string.attack_act_unban) to Mt5Colors.dim
                     "inc" -> stringResource(R.string.attack_act_inc) to Mt5Colors.err
                     "restore" -> stringResource(R.string.attack_act_restore) to Mt5Colors.warn
+                    "drop" -> stringResource(R.string.attack_act_drop) to Mt5Colors.orange // 国外からの接続を nft で捨てた
                     else -> x.act to Mt5Colors.text
                 }
                 RowItem(ui.selectedIp == x.ip, { vm.select(x.ip) }) {
