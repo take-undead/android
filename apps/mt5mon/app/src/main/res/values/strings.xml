@@ -167,6 +167,9 @@
     <string name="set_alert_volume">音量 %1$d</string>
     <string name="set_alert_test">試しに鳴らす</string>
     <string name="set_alert_note">幅の 2 倍動くと 2 回…最大 5 回鳴る。上がると A5→E6、下がると E6→A5。</string>
+    <string name="set_screen_title">画面</string>
+    <string name="set_screen_keep_on">画面を消さない（スリープ禁止）</string>
+    <string name="set_screen_keep_on_note">このアプリを開いている間だけ、画面が自動で消えない。ほかのアプリに移るか、電源ボタンを押せば今までどおり消える。電池の減りが早くなる。</string>
     <string name="set_notice_title">VPS からの知らせ</string>
     <string name="set_notice_seconds">ポップアップを自動で閉じる秒</string>
     <string name="set_notice_manual">手で閉じる</string>

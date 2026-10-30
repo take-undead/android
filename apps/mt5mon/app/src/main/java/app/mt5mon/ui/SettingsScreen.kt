@@ -150,6 +150,17 @@ fun SettingsScreen(vm: MainViewModel) {
                 Text(stringResource(R.string.set_alert_note), color = Mt5Colors.dim, style = MaterialTheme.typography.bodySmall)
             }
         }
+        // ---- 画面 ----
+        Card(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+            Column(Modifier.padding(12.dp)) {
+                Text(stringResource(R.string.set_screen_title), style = MaterialTheme.typography.titleMedium, color = Mt5Colors.sym)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.set_screen_keep_on), color = Mt5Colors.text, modifier = Modifier.weight(1f))
+                    Switch(checked = ui.prefs.keepScreenOn, onCheckedChange = vm::setKeepScreenOn)
+                }
+                Text(stringResource(R.string.set_screen_keep_on_note), color = Mt5Colors.dim, style = MaterialTheme.typography.bodySmall)
+            }
+        }
         // ---- 知らせ ----
         Card(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
             Column(Modifier.padding(12.dp)) {

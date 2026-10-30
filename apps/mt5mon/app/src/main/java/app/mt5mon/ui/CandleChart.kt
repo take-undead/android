@@ -126,6 +126,7 @@ fun CandleChart(
     val density = LocalDensity.current
     val textPx = with(density) { 11.sp.toPx() }
     val smallPx = with(density) { 10.sp.toPx() }
+    val sidePx = with(density) { 18.sp.toPx() }
     val bars = ChartData.buildBars(st, tf, hist)
     val labelFontColor = Mt5Colors.dim.toArgb()
     val hintPast = stringResource(R.string.chart_hint_past)
@@ -157,6 +158,8 @@ fun CandleChart(
         val candleW = chartW - with(density) { 60.dp.toPx() } // 最新の足が現在値の札に隠れないよう手前で止める
         val chartH = size.height - timeH
         val paint = Paint().apply { isAntiAlias = true; textSize = textPx; typeface = Typeface.MONOSPACE }
+        // 建値の「買」「売」は大きく太く（2026-10-31 運用者。前は時刻と同じ 10sp で読みにくかった）
+        val sidePaint = Paint().apply { isAntiAlias = true; textSize = sidePx; typeface = Typeface.DEFAULT_BOLD }
 
         if (bars.isEmpty()) {
             geom.bw = 0f
@@ -265,8 +268,8 @@ fun CandleChart(
             val y = py(p.open.toFloat())
             val c = if (p.buy) Mt5Colors.up else Mt5Colors.down
             drawLine(c, Offset(0f, y), Offset(chartW, y), pathEffect = dash2)
-            paint.color = c.toArgb()
-            drawContext.canvas.nativeCanvas.drawText(if (p.buy) "買" else "売", 2f, y - 2f, paint)
+            sidePaint.color = c.toArgb()
+            drawContext.canvas.nativeCanvas.drawText(if (p.buy) "買" else "売", 2f, y - 3f, sidePaint)
         }
         // ローソク（上げ = 赤、下げ = 水色）
         val gap = if (bw >= 12f) 4f else 2f

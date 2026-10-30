@@ -186,6 +186,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setNoticeSeconds(sec: Int) = viewModelScope.launch { store.setNoticeSeconds(sec) }
     fun setAutoVpn(on: Boolean) = viewModelScope.launch { store.setAutoVpn(on) }
     fun setExternalVpn(on: Boolean) = viewModelScope.launch { store.setExternalVpn(on) }
+    fun setKeepScreenOn(on: Boolean) = viewModelScope.launch { store.setKeepScreenOn(on) }
     fun setTf(tf: Int) = viewModelScope.launch {
         store.setTf(tf)
         histNow.trySend(Unit)

@@ -11,7 +11,7 @@ PicoCalc の `apps/net/mt5mon`（MT5 状況モニター）と `apps/net/vpschat`
 | 日報 | Claude 監督の判断の要約（/sup.json）と日報の全文（/nippo.md） | mt5mon の N |
 | 攻撃 | fail2ban の記録（上位・永久・記録・国別）、永久ブロック・解除（確かめてから送る） | mt5mon の B |
 | チャット | VPS の Claude と話す（日本語入力は Android の IME） | vpschat |
-| 設定 | WireGuard のつなぐ・切る、config.txt の読み込み、チャイム、知らせの表示秒 | — |
+| 設定 | WireGuard のつなぐ・切る、config.txt の読み込み、チャイム、画面を消さない（スリープ禁止）、知らせの表示秒 | — |
 
 どの画面でも、VPS からの知らせ（スプレッド警報の調査結果）が来ればポップアップで出してチャイムを鳴らす。
 
@@ -77,6 +77,14 @@ PicoCalc と同じ鍵・同じアドレス（10.8.0.3）なので VPS 側の登�
 - 届くかどうかは HTTP の結果でしか分からないので、VPN の札はつながっている扱い(緑)にする。届かなければ HTTP の失敗として出る。
 - 保存のキーは `external_vpn`(既定 false。今までの端末は変わらない)。読み込んだ config.txt は消さずに残る。
 - 2026-10-31 に HEADWOLF F5(Android 14。my-ai-bot の WireGuard 10.8.0.10)で、マイボットの VPN を保ったままモニターが LIVE になるのを確かめた。
+
+## 画面を消さない（2026-10-31 追加）
+
+設定の「画面」→「画面を消さない（スリープ禁止）」をオンにすると、このアプリが前にある間だけ画面が自動で消えない（`View.keepScreenOn`）。
+ほかのアプリに移るか電源ボタンを押せば今までどおり消える。保存のキーは `keep_screen_on`（既定 false）。
+HEADWOLF F5 で、オンの間は WindowManager が mt5mon の分の SCREEN_BRIGHT の wake lock を持ち、オフで外れることを `dumpsys power` で確かめた。
+
+チャートの建値の「買」「売」は 18sp の太字にした（前は時刻の目盛りと同じ 10sp）。
 
 ## ビルド
 

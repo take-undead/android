@@ -25,12 +25,14 @@ data class Prefs(
     val barWidth: Int = 3,             // ローソクの幅（PicoCalc の px。1〜4。画面では dp に換算）
     val autoVpn: Boolean = true,       // 起動時に VPN を自動でつなぐ
     val externalVpn: Boolean = false,  // 端末の VPN を使い、config.txt と自分のトンネルを使わない
+    val keepScreenOn: Boolean = false, // アプリを開いている間、画面を消さない
 )
 
 /**
  * 保存する項目のキー（CLAUDE.md G3: 変えるときは移行を書く）。
  *  config_text / alert_on / alert_pips / alert_minutes / alert_volume / notice_seconds / tf / bar_width / auto_vpn
  *  external_vpn(2026-10-31 追加。無ければ false = 今までどおり。移行は要らない)
+ *  keep_screen_on(2026-10-31 追加。無ければ false = 今までどおり。移行は要らない)
  */
 class ConfigStore(private val context: Context) {
     private object K {
@@ -44,6 +46,7 @@ class ConfigStore(private val context: Context) {
         val barWidth = intPreferencesKey("bar_width")
         val autoVpn = booleanPreferencesKey("auto_vpn")
         val externalVpn = booleanPreferencesKey("external_vpn")
+        val keepScreenOn = booleanPreferencesKey("keep_screen_on")
     }
 
     val prefs: Flow<Prefs> = context.dataStore.data.map { p ->
@@ -58,6 +61,7 @@ class ConfigStore(private val context: Context) {
             barWidth = p[K.barWidth] ?: 3,
             autoVpn = p[K.autoVpn] ?: true,
             externalVpn = p[K.externalVpn] ?: false,
+            keepScreenOn = p[K.keepScreenOn] ?: false,
         )
     }
 
@@ -73,4 +77,5 @@ class ConfigStore(private val context: Context) {
     suspend fun setBarWidth(w: Int) = context.dataStore.edit { it[K.barWidth] = w.coerceIn(1, 4) }
     suspend fun setAutoVpn(on: Boolean) = context.dataStore.edit { it[K.autoVpn] = on }
     suspend fun setExternalVpn(on: Boolean) = context.dataStore.edit { it[K.externalVpn] = on }
+    suspend fun setKeepScreenOn(on: Boolean) = context.dataStore.edit { it[K.keepScreenOn] = on }
 }
