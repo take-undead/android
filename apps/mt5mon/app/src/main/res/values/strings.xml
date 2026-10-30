@@ -51,6 +51,8 @@
     <string name="waiting_pubkey">この端末の WireGuard 公開鍵（VPS の [Peer] と同じはず）:</string>
     <string name="waiting_endpoint">接続先 %1$s</string>
     <string name="waiting_external">端末の VPN で http://10.8.0.1:8080/ を読んでいる。届かなければ WireGuard アプリのトンネルがオンかを確かめる。</string>
+    <string name="keep_screen_on">☀スリープ禁止</string>
+    <string name="keep_screen_off">☾スリープ可</string>
     <string name="bar_width">幅 %1$d</string>
     <string name="chart_alert_on">♪%1$dp/%2$d分</string>
     <string name="chart_alert_off">♪オフ</string>

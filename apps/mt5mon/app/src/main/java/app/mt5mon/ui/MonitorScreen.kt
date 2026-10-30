@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.mt5mon.R
 import app.mt5mon.data.Fetch
@@ -92,7 +94,7 @@ fun MonitorScreen(vm: MainViewModel, onOpenSettings: () -> Unit) {
     val st = ui.status
 
     Column(Modifier.fillMaxSize().background(Mt5Colors.bg)) {
-        Header(ui, badge, onRefresh = vm::refresh)
+        Header(ui, badge, onRefresh = vm::refresh, onKeepScreenOn = vm::setKeepScreenOn)
         HorizontalDivider(color = Mt5Colors.frame)
         if (st == null) {
             Waiting(ui, prob, onOpenSettings)
@@ -131,14 +133,15 @@ fun MonitorScreen(vm: MainViewModel, onOpenSettings: () -> Unit) {
 }
 
 @Composable
-private fun Header(ui: MainUi, badge: Badge, onRefresh: () -> Unit) {
+private fun Header(ui: MainUi, badge: Badge, onRefresh: () -> Unit, onKeepScreenOn: (Boolean) -> Unit) {
     val st = ui.status
     Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (st != null) {
                 Text(st.symbol, color = Mt5Colors.sym, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
-                Text("${fmtPrice(st.bid, st.digits)}/${fmtPrice(st.ask, st.digits)}", color = Mt5Colors.text, fontFamily = FontFamily.Monospace)
+                // 売値/買値は大きく太く(2026-10-31 運用者)
+                Text("${fmtPrice(st.bid, st.digits)}/${fmtPrice(st.ask, st.digits)}", color = Mt5Colors.text, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 22.sp, maxLines = 1, softWrap = false)
                 Spacer(Modifier.width(8.dp))
                 Text(String.format(Locale.US, "%.1f", st.spreadPips), color = Mt5Colors.dim)
             } else {
@@ -160,6 +163,12 @@ private fun Header(ui: MainUi, badge: Badge, onRefresh: () -> Unit) {
                 val age = (ui.nowMillis - ui.lastOkAt) / 1000
                 val interval = ui.config?.intervalSec ?: 5
                 Text(stringResource(R.string.gen_age, timePart(st.genJst), age), color = if (age > 2 * interval + 5) Mt5Colors.warn else Mt5Colors.dim, style = MaterialTheme.typography.bodySmall)
+            }
+            Spacer(Modifier.weight(1f))
+            // 画面スリープ禁止(設定と同じもの。2026-10-31 運用者「モニターの画面の上に」。1 段目は売値/買値が大きいので 2 段目の右端)
+            val keep = ui.prefs.keepScreenOn
+            TextButton(onClick = { onKeepScreenOn(!keep) }) {
+                Text(stringResource(if (keep) R.string.keep_screen_on else R.string.keep_screen_off), color = if (keep) Mt5Colors.ok else Mt5Colors.dim, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
