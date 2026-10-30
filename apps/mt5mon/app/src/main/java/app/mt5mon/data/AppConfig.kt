@@ -21,7 +21,17 @@ data class AppConfig(
     val urlPort: Int,
     val urlPath: String,             // "/status.json"
     val intervalSec: Int,
+    val external: Boolean = false,   // 端末の VPN(WireGuard アプリなど)を使う。鍵は持たない
 ) {
+    companion object {
+        /** 「今ある VPN を使う」ときの設定。url と取得間隔は tools\mt5mon_config.py の既定と同じ */
+        val EXTERNAL = AppConfig(
+            wgPrivateKey = "", wgPublicKey = "", wgAddress = "", wgPeerPublicKey = "", wgEndpoint = "",
+            wgAllowed = "", wgKeepalive = 0,
+            urlHost = "10.8.0.1", urlPort = 8080, urlPath = "/status.json", intervalSec = 5, external = true,
+        )
+    }
+
     /** 同じ所（…/status.json のフォルダ）の別のファイルの URL */
     fun urlOf(name: String): String {
         val dir = urlPath.substringBeforeLast('/', "")

@@ -71,7 +71,15 @@ fun SettingsScreen(vm: MainViewModel) {
         Card(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
             Column(Modifier.padding(12.dp)) {
                 Text(stringResource(R.string.set_vpn_title), style = MaterialTheme.typography.titleMedium, color = Mt5Colors.sym)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.set_vpn_external), color = Mt5Colors.text, modifier = Modifier.weight(1f))
+                    Switch(checked = ui.prefs.externalVpn, onCheckedChange = vm::setExternalVpn, enabled = !ui.vpnBusy)
+                }
                 val t = ui.tunnel
+                if (t.external) {
+                    Text(stringResource(R.string.set_vpn_external_note), color = Mt5Colors.dim, style = MaterialTheme.typography.bodySmall)
+                    return@Column
+                }
                 val stText = when {
                     t.error.isNotEmpty() -> stringResource(R.string.set_vpn_error, t.error)
                     !t.started -> stringResource(R.string.set_vpn_down)
@@ -96,7 +104,9 @@ fun SettingsScreen(vm: MainViewModel) {
             Column(Modifier.padding(12.dp)) {
                 Text(stringResource(R.string.set_config_title), style = MaterialTheme.typography.titleMedium, color = Mt5Colors.sym)
                 val cfg = ui.config
-                if (cfg != null) {
+                if (cfg != null && cfg.external) {
+                    Text(stringResource(R.string.set_config_external), color = Mt5Colors.dim)
+                } else if (cfg != null) {
                     Text(stringResource(R.string.set_config_pubkey), color = Mt5Colors.dim, style = MaterialTheme.typography.bodySmall)
                     Text(cfg.wgPublicKey, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall, color = Mt5Colors.text)
                     Text(stringResource(R.string.set_config_lines, cfg.wgAddress, cfg.wgEndpoint, cfg.wgAllowed, cfg.wgKeepalive, "http://${cfg.urlHost}:${cfg.urlPort}${cfg.urlPath}", cfg.intervalSec), color = Mt5Colors.text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))

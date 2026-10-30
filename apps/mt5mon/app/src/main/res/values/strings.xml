@@ -47,9 +47,10 @@
     <!-- モニター -->
     <string name="gen_age">%1$s %2$d秒前</string>
     <string name="waiting">取得中…</string>
-    <string name="waiting_no_config_hint">PC の picoclac\\build\\mt5mon\\config.txt（tools\\mt5mon_config.py が作ったもの）をこの端末に写し、設定の「ファイルから読み込む」で選ぶ。PicoCalc と同じ鍵を使うので VPS 側の登録は要らない。</string>
+    <string name="waiting_no_config_hint">PC の picoclac\\build\\mt5mon\\config.txt（tools\\mt5mon_config.py が作ったもの）をこの端末に写し、設定の「ファイルから読み込む」で選ぶ。PicoCalc と同じ鍵を使うので VPS 側の登録は要らない。\n端末にもう VPS への VPN（WireGuard アプリなど）があるなら、設定の「今ある VPN を使う」をオンにすれば鍵は要らない。</string>
     <string name="waiting_pubkey">この端末の WireGuard 公開鍵（VPS の [Peer] と同じはず）:</string>
     <string name="waiting_endpoint">接続先 %1$s</string>
+    <string name="waiting_external">端末の VPN で http://10.8.0.1:8080/ を読んでいる。届かなければ WireGuard アプリのトンネルがオンかを確かめる。</string>
     <string name="bar_width">幅 %1$d</string>
     <string name="chart_alert_on">♪%1$dp/%2$d分</string>
     <string name="chart_alert_off">♪オフ</string>
@@ -135,6 +136,8 @@
 
     <!-- 設定 -->
     <string name="set_vpn_title">WireGuard（VPS への VPN）</string>
+    <string name="set_vpn_external">今ある VPN を使う（鍵なし）</string>
+    <string name="set_vpn_external_note">このアプリはトンネルを張らず、端末の VPN（WireGuard アプリなど）で 10.8.0.1 に届く前提で読む。config.txt の鍵は使わないので、PicoCalc とも取り合いにならない。VPS には、その VPN の端末が登録されていること。</string>
     <string name="set_vpn_down">切れている</string>
     <string name="set_vpn_up">つながっている（最後のハンドシェイク %1$d 秒前）</string>
     <string name="set_vpn_handshaking">ハンドシェイク待ち…</string>
@@ -149,6 +152,7 @@
     <string name="set_config_pubkey">この端末の公開鍵:</string>
     <string name="set_config_lines">アドレス %1$s\n接続先 %2$s\n通す宛先 %3$s  keepalive %4$d 秒\nURL %5$s\n取得間隔 %6$d 秒</string>
     <string name="set_config_none">まだ読み込んでいない</string>
+    <string name="set_config_external">「今ある VPN を使う」なので使わない（読み込んである中身は残す）</string>
     <string name="set_config_bad">不備: %1$s</string>
     <string name="set_config_import_err">読み込めない: %1$s</string>
     <string name="set_config_imported">設定ファイルを読み込んだ</string>

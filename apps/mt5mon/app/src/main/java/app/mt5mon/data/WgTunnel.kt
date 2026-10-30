@@ -21,6 +21,7 @@ data class TunnelInfo(
     val rxBytes: Long = 0,
     val txBytes: Long = 0,
     val error: String = "",            // 上げられなかった理由
+    val external: Boolean = false,     // 端末の VPN を使う(このアプリはトンネルを張らない)
 )
 
 /**
@@ -73,6 +74,15 @@ class WgTunnel(context: Context) {
         }
     }
 
+    /**
+     * 端末の VPN を使う。Android の VPN は 1 つだけなので、マイボットの WireGuard などと並べて使うときはこちら。
+     * 届くかどうかは HTTP の結果でしか分からないので、つながっている扱いにする
+     */
+    suspend fun useExternal() {
+        down()
+        _info.value = TunnelInfo(started = true, up = true, external = true)
+    }
+
     suspend fun down() = withContext(Dispatchers.IO) {
         try {
             backend.setState(tunnel, Tunnel.State.DOWN, null)
@@ -84,7 +94,7 @@ class WgTunnel(context: Context) {
 
     /** 統計を読んで info を更新する（2 秒ごとに呼ぶ） */
     suspend fun refresh() = withContext(Dispatchers.IO) {
-        if (!_info.value.started) return@withContext
+        if (!_info.value.started || _info.value.external) return@withContext
         try {
             val stats = backend.getStatistics(tunnel)
             val key = peerKey

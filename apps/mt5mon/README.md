@@ -66,6 +66,18 @@ adb shell am start -n app.mt5mon/.MainActivity -a android.intent.action.VIEW -d 
 
 PicoCalc と同じ鍵・同じアドレス（10.8.0.3）なので VPS 側の登録は要らない。ただし **PicoCalc の mt5mon / vpschat と同時にはつなげない**（同じピアは 1 つ。後からハンドシェイクした方が勝つ）。
 
+## 今ある VPN を使う(鍵なし。2026-10-31 追加)
+
+端末にもう VPS への VPN(公式 WireGuard アプリなど。my-ai-bot の端末ごとの鍵)があるなら、設定の「今ある VPN を使う」をオンにする。
+このアプリはトンネルを張らず、config.txt も読まずに `http://10.8.0.1:8080/` を読む(url と取得間隔は `mt5mon_config.py` の既定と同じ)。
+
+- Android は VPN を 1 つしか持てない。自分でトンネルを張ると、ほかの VPN(マイボットの WireGuard など)が切れる。これを避けるため。
+- 端末に本番の鍵(PicoCalc と共用の 10.8.0.3)を置かずに済み、PicoCalc とも取り合いにならない。
+- mt5-status は 10.8.0.0/24 からなら受ける(`status_server.py` の `WG_NET`)ので、端末の VPN のアドレスが何番でも読める。永久ブロック・解除の POST もその端末から送れる。
+- 届くかどうかは HTTP の結果でしか分からないので、VPN の札はつながっている扱い(緑)にする。届かなければ HTTP の失敗として出る。
+- 保存のキーは `external_vpn`(既定 false。今までの端末は変わらない)。読み込んだ config.txt は消さずに残る。
+- 2026-10-31 に HEADWOLF F5(Android 14。my-ai-bot の WireGuard 10.8.0.10)で、マイボットの VPN を保ったままモニターが LIVE になるのを確かめた。
+
 ## ビルド
 
 Android Studio で `apps/mt5mon` を開くか、コマンドで（JDK 17 と Android SDK の場所は環境変数で指す。`local.properties` は作らない）:

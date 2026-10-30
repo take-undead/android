@@ -176,6 +176,8 @@ private fun Waiting(ui: MainUi, prob: String, onOpenSettings: () -> Unit) {
             Text(stringResource(R.string.waiting_no_config_hint), color = Mt5Colors.dim)
             Spacer(Modifier.height(8.dp))
             Button(onClick = onOpenSettings) { Text(stringResource(R.string.open_settings)) }
+        } else if (cfg.external) {
+            Text(stringResource(R.string.waiting_external), color = Mt5Colors.dim)
         } else {
             Text(stringResource(R.string.waiting_pubkey), color = Mt5Colors.dim)
             Text(cfg.wgPublicKey, color = Mt5Colors.text, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)

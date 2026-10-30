@@ -90,10 +90,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // 設定の変化を追う（config.txt の中身・チャイムの設定）
         viewModelScope.launch {
             store.prefs.collect { p ->
-                val (cfg, err) = parseConfig(p.configText)
+                val (cfg, err) = if (p.externalVpn) AppConfig.EXTERNAL to "" else parseConfig(p.configText)
                 mt5.config.value = cfg
                 _ui.update { it.copy(prefs = p, config = cfg, configError = err) }
-                if (cfg != null && p.autoVpn && !autoVpnTried) {
+                // 端末の VPN を使う・使わないの切り替え(自分のトンネルは落とす)
+                if (p.externalVpn != tunnel.info.value.external) {
+                    if (p.externalVpn) tunnel.useExternal() else tunnel.down()
+                    autoVpnTried = false
+                }
+                if (cfg != null && !cfg.external && p.autoVpn && !autoVpnTried) {
                     autoVpnTried = true
                     connectVpn()
                 }
@@ -135,6 +140,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun connectVpn() {
         val cfg = _ui.value.config ?: return
+        if (cfg.external) return
         val intent = tunnel.prepareIntent()
         if (intent != null) {
             vpnPermission.trySend(intent)
@@ -179,6 +185,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setNoticeSeconds(sec: Int) = viewModelScope.launch { store.setNoticeSeconds(sec) }
     fun setAutoVpn(on: Boolean) = viewModelScope.launch { store.setAutoVpn(on) }
+    fun setExternalVpn(on: Boolean) = viewModelScope.launch { store.setExternalVpn(on) }
     fun setTf(tf: Int) = viewModelScope.launch {
         store.setTf(tf)
         histNow.trySend(Unit)
